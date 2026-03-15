@@ -1,0 +1,57 @@
+export const ORDER_FILE_NAME = ".md-task-viewer-order.json";
+
+export type TaskPriority = "MUST" | "WANT";
+export type TaskStatus = "TODO" | "WIP" | "DONE";
+
+export interface TaskFrontmatter {
+  title: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  createdAt: string;
+  updatedAt: string;
+  [key: string]: unknown;
+}
+
+export interface TaskRecord {
+  path: string;
+  content: string;
+  frontmatter: TaskFrontmatter;
+  extraFrontmatter: Record<string, unknown>;
+  raw: string;
+  normalized: boolean;
+}
+
+export interface TaskParseError {
+  path: string;
+  message: string;
+}
+
+export interface TaskListResponse {
+  tasks: TaskRecord[];
+  errors: TaskParseError[];
+}
+
+export interface CreateTaskInput {
+  title: string;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+  content?: string;
+  directory?: string;
+  path?: string;
+  extraFrontmatter?: Record<string, unknown>;
+}
+
+export interface UpdateTaskInput {
+  path?: string;
+  title: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  content: string;
+  extraFrontmatter?: Record<string, unknown>;
+  baseUpdatedAt?: string;
+}
+
+export interface OrderFile {
+  version: number;
+  order: string[];
+}
