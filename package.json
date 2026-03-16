@@ -2,6 +2,20 @@
   "name": "md-task-viewer",
   "version": "0.1.0",
   "description": "Launch a local task viewer/editor for markdown files with frontmatter",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/newnakashima/md-task-viewer.git"
+  },
+  "homepage": "https://github.com/newnakashima/md-task-viewer",
+  "bugs": "https://github.com/newnakashima/md-task-viewer/issues",
+  "keywords": [
+    "markdown",
+    "task",
+    "viewer",
+    "frontmatter",
+    "kanban"
+  ],
   "type": "module",
   "bin": {
     "md-task-viewer": "./dist/cli.js"
