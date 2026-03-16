@@ -10,6 +10,8 @@ import {
   deleteTask,
   listTasks,
   parseOrderPayload,
+  readConfig,
+  saveConfig,
   saveOrder,
   updateTask
 } from "./taskStore.js";
@@ -96,6 +98,28 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
     }
   });
 
+  app.get("/api/config", async () => {
+    try {
+      return await readConfig(options.rootDir);
+    } catch (error) {
+      return { version: 1, taskDirs: ["."], order: [] };
+    }
+  });
+
+  app.put("/api/config", async (request, reply) => {
+    try {
+      const body = request.body as { taskDirs?: unknown } | null;
+      const taskDirs = body?.taskDirs;
+      if (!Array.isArray(taskDirs) || taskDirs.some((item) => typeof item !== "string")) {
+        throw new ValidationError("taskDirs must be an array of strings.");
+      }
+      const config = await saveConfig(options.rootDir, taskDirs as string[]);
+      return reply.send(config);
+    } catch (error) {
+      sendJsonError(reply, error);
+    }
+  });
+
   app.get("/api/events", async (_request, reply) => {
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -128,8 +152,8 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
 
   watcher.on("all", (eventName, changedPath) => {
     const isMarkdown = changedPath.endsWith(".md") || changedPath.endsWith(".markdown");
-    const isOrderFile = path.basename(changedPath) === ".md-task-viewer-order.json";
-    if (!isMarkdown && !isOrderFile) {
+    const isConfigFile = path.basename(changedPath) === ".md-task-viewer.json";
+    if (!isMarkdown && !isConfigFile) {
       return;
     }
 

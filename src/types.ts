@@ -1,4 +1,4 @@
-export const ORDER_FILE_NAME = ".md-task-viewer-order.json";
+export const CONFIG_FILE_NAME = ".md-task-viewer.json";
 
 export type TaskPriority = "MUST" | "WANT";
 export type TaskStatus = "TODO" | "WIP" | "DONE";
@@ -51,7 +51,8 @@ export interface UpdateTaskInput {
   baseUpdatedAt?: string;
 }
 
-export interface OrderFile {
+export interface ConfigFile {
   version: number;
+  taskDirs: string[];
   order: string[];
 }

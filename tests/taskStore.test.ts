@@ -68,7 +68,7 @@ describe("taskStore", () => {
     const payload = await listTasks(rootDir);
     expect(payload.tasks.map((task) => task.path)).toEqual(["beta.md", "alpha.md"]);
 
-    const orderFile = await readFile(path.join(rootDir, ".md-task-viewer-order.json"), "utf8");
+    const orderFile = await readFile(path.join(rootDir, ".md-task-viewer.json"), "utf8");
     expect(orderFile).toContain('"order": [\n    "beta.md",\n    "alpha.md"\n  ]');
   });
 
