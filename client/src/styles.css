@@ -382,6 +382,11 @@ button {
   gap: 12px;
 }
 
+.field-row-top {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
 .meta-strip {
   display: flex;
   gap: 16px;

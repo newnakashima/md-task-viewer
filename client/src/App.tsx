@@ -425,13 +425,31 @@ export function App(): ReactElement {
     }
   }
 
+  async function patchField(field: "priority" | "status", value: string): Promise<void> {
+    if (!draft?.originalPath) {
+      return;
+    }
+    try {
+      const updated = await requestJson<TaskRecord>(
+        `/api/task-fields/${encodeURIComponent(draft.originalPath)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ [field]: value })
+        }
+      );
+      await loadTasks();
+      setSelectedPath(updated.path);
+      setDraft((current) => current ? { ...current, [field]: value, updatedAt: updated.frontmatter.updatedAt } : current);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : `Failed to update ${field}.`);
+    }
+  }
+
   const isDirty =
     !!draft &&
     (draft.originalPath === null ||
       draft.path !== draft.originalPath ||
       draft.title !== selectedTask?.frontmatter.title ||
-      draft.priority !== selectedTask?.frontmatter.priority ||
-      draft.status !== selectedTask?.frontmatter.status ||
       draft.content !== selectedTask?.content);
 
   return (
@@ -461,7 +479,7 @@ export function App(): ReactElement {
                 originalPath: null,
                 path: taskDirs[0] ? `${taskDirs[0]}/` : "",
                 title: "",
-                priority: "WANT",
+                priority: "MUST",
                 status: "TODO",
                 content: "",
                 extraFrontmatter: {}
@@ -531,6 +549,43 @@ export function App(): ReactElement {
 
           {draft ? (
             <div className="task-form">
+              <div className="field-row field-row-top">
+                <label>
+                  <span>Priority</span>
+                  <select
+                    value={draft.priority}
+                    onChange={(event) => {
+                      const value = event.target.value as Priority;
+                      setDraft({ ...draft, priority: value });
+                      if (draft.originalPath) {
+                        void patchField("priority", value);
+                      }
+                    }}
+                  >
+                    <option value="MUST">MUST</option>
+                    <option value="WANT">WANT</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Status</span>
+                  <select
+                    value={draft.status}
+                    onChange={(event) => {
+                      const value = event.target.value as Status;
+                      setDraft({ ...draft, status: value });
+                      if (draft.originalPath) {
+                        void patchField("status", value);
+                      }
+                    }}
+                  >
+                    <option value="TODO">TODO</option>
+                    <option value="WIP">WIP</option>
+                    <option value="DONE">DONE</option>
+                  </select>
+                </label>
+              </div>
+
               <label>
                 <span>Title</span>
                 <input
@@ -562,31 +617,6 @@ export function App(): ReactElement {
                   placeholder="planning/release-notes.md"
                 />
               </label>
-
-              <div className="field-row">
-                <label>
-                  <span>Priority</span>
-                  <select
-                    value={draft.priority}
-                    onChange={(event) => setDraft({ ...draft, priority: event.target.value as Priority })}
-                  >
-                    <option value="MUST">MUST</option>
-                    <option value="WANT">WANT</option>
-                  </select>
-                </label>
-
-                <label>
-                  <span>Status</span>
-                  <select
-                    value={draft.status}
-                    onChange={(event) => setDraft({ ...draft, status: event.target.value as Status })}
-                  >
-                    <option value="TODO">TODO</option>
-                    <option value="WIP">WIP</option>
-                    <option value="DONE">DONE</option>
-                  </select>
-                </label>
-              </div>
 
               <div className="meta-strip">
                 <span>Created {formatDate(draft.createdAt)}</span>

@@ -8,6 +8,7 @@
     "tasks/STATUSとPRIORITYはSAVE無しで上書きする.md",
     "tasks/task-details-not-updated.md",
     "tasks/タイトルをそのままファイル名にしたい.md",
-    "tasks/new-design.md"
+    "tasks/new-design.md",
+    "tasks/ignoreパスを設定できるようにする.md"
   ]
 }

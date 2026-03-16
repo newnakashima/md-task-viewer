@@ -10,6 +10,7 @@ import {
   deleteTask,
   listTasks,
   parseOrderPayload,
+  patchTaskFields,
   readConfig,
   saveConfig,
   saveOrder,
@@ -83,6 +84,16 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
     try {
       await deleteTask(options.rootDir, currentPath);
       return reply.code(204).send();
+    } catch (error) {
+      sendJsonError(reply, error);
+    }
+  });
+
+  app.patch("/api/task-fields/*", async (request, reply) => {
+    const currentPath = decodeURIComponent((request.params as { "*": string })["*"] ?? "");
+    try {
+      const task = await patchTaskFields(options.rootDir, currentPath, (request.body ?? {}) as never);
+      return reply.send(task);
     } catch (error) {
       sendJsonError(reply, error);
     }

@@ -5,6 +5,7 @@ import {
   CONFIG_FILE_NAME,
   type ConfigFile,
   type CreateTaskInput,
+  type PatchTaskFieldsInput,
   type TaskFrontmatter,
   type TaskListResponse,
   type TaskParseError,
@@ -351,7 +352,7 @@ export async function createTask(rootDir: string, input: CreateTaskInput): Promi
     extraFrontmatter: input.extraFrontmatter ?? {},
     frontmatter: {
       title: input.title.trim(),
-      priority: input.priority ?? "WANT",
+      priority: input.priority ?? "MUST",
       status: input.status ?? "TODO",
       createdAt: now,
       updatedAt: now
@@ -451,6 +452,46 @@ export async function deleteTask(rootDir: string, relativePath: string): Promise
     rootDir,
     current.tasks.map((task) => task.path)
   );
+}
+
+export async function patchTaskFields(rootDir: string, currentPath: string, input: PatchTaskFieldsInput): Promise<TaskRecord> {
+  const normalizedCurrentPath = ensureMarkdownExtension(normalizeRelativePath(currentPath));
+  const absoluteCurrentPath = path.join(rootDir, normalizedCurrentPath);
+
+  let existing: TaskRecord;
+  try {
+    existing = await parseTask(rootDir, normalizedCurrentPath);
+  } catch (error) {
+    const maybeError = error as NodeJS.ErrnoException;
+    if (maybeError.code === "ENOENT") {
+      throw new ConflictError("The task no longer exists.");
+    }
+    throw error;
+  }
+
+  const priority = input.priority && REQUIRED_PRIORITY.includes(input.priority) ? input.priority : existing.frontmatter.priority;
+  const status = input.status && REQUIRED_STATUS.includes(input.status) ? input.status : existing.frontmatter.status;
+
+  if (priority === existing.frontmatter.priority && status === existing.frontmatter.status) {
+    return existing;
+  }
+
+  const record: TaskRecord = {
+    path: normalizedCurrentPath,
+    raw: existing.raw,
+    normalized: false,
+    content: existing.content,
+    extraFrontmatter: existing.extraFrontmatter,
+    frontmatter: {
+      ...existing.frontmatter,
+      priority,
+      status,
+      updatedAt: asUtcISOString(new Date())
+    }
+  };
+
+  await fs.writeFile(absoluteCurrentPath, serializeTask(record), "utf8");
+  return parseTask(rootDir, normalizedCurrentPath);
 }
 
 export function parseOrderPayload(input: unknown): string[] {

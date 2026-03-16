@@ -51,6 +51,11 @@ export interface UpdateTaskInput {
   baseUpdatedAt?: string;
 }
 
+export interface PatchTaskFieldsInput {
+  priority?: TaskPriority;
+  status?: TaskStatus;
+}
+
 export interface ConfigFile {
   version: number;
   taskDirs: string[];
