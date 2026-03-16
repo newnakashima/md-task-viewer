@@ -234,7 +234,11 @@ export function App(): ReactElement {
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8
+      }
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates
     })
@@ -479,7 +483,13 @@ export function App(): ReactElement {
                       key={task.path}
                       task={task}
                       selected={task.path === selectedPath}
-                      onSelect={setSelectedPath}
+                      onSelect={(path) => {
+                        setSelectedPath(path);
+                        const target = tasks.find((t) => t.path === path);
+                        if (target) {
+                          setDraft(draftFromTask(target));
+                        }
+                      }}
                     />
                   ))}
                   {tasks.length === 0 ? <p className="empty-list">No tasks yet. Create your first markdown task.</p> : null}
