@@ -4,6 +4,8 @@
     "tasks"
   ],
   "order": [
-    "tasks/タイトルをそのままファイル名にしたい.md"
+    "tasks/タイトルをそのままファイル名にしたい.md",
+    "tasks/new-design.md",
+    "tasks/task-details-doesnt-updated.md"
   ]
 }
