@@ -226,6 +226,7 @@ export function App(): ReactElement {
   const [busy, setBusy] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [taskDirs, setTaskDirs] = useState<string[]>(["."]);
+  const [pathManuallyEdited, setPathManuallyEdited] = useState<boolean>(false);
 
   const selectedTask = useMemo(
     () => tasks.find((task) => task.path === selectedPath) ?? null,
@@ -444,17 +445,18 @@ export function App(): ReactElement {
           <button
             type="button"
             className="primary-button"
-            onClick={() =>
+            onClick={() => {
+              setPathManuallyEdited(false);
               setDraft({
                 originalPath: null,
-                path: "",
+                path: taskDirs[0] ? `${taskDirs[0]}/` : "",
                 title: "",
                 priority: "WANT",
                 status: "TODO",
                 content: "",
                 extraFrontmatter: {}
-              })
-            }
+              });
+            }}
           >
             New Task
           </button>
@@ -511,7 +513,17 @@ export function App(): ReactElement {
                 <span>Title</span>
                 <input
                   value={draft.title}
-                  onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+                  onChange={(event) => {
+                    const newTitle = event.target.value;
+                    const updates: Partial<DraftTask> = { title: newTitle };
+                    if (!pathManuallyEdited && draft.originalPath === null) {
+                      const dir = taskDirs[0] || "";
+                      updates.path = newTitle.trim()
+                        ? `${dir}/${newTitle}.md`
+                        : `${dir}/`;
+                    }
+                    setDraft({ ...draft, ...updates });
+                  }}
                   placeholder="Write release notes"
                   required
                 />
@@ -521,7 +533,10 @@ export function App(): ReactElement {
                 <span>Relative path</span>
                 <input
                   value={draft.path}
-                  onChange={(event) => setDraft({ ...draft, path: event.target.value })}
+                  onChange={(event) => {
+                    setPathManuallyEdited(true);
+                    setDraft({ ...draft, path: event.target.value });
+                  }}
                   placeholder="planning/release-notes.md"
                 />
               </label>
