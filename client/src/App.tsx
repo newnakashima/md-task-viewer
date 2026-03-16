@@ -104,8 +104,10 @@ function SortableTaskItem({
       {...attributes}
       {...listeners}
     >
-      <span className={`badge badge-${task.frontmatter.priority.toLowerCase()}`}>{task.frontmatter.priority}</span>
-      <span className={`badge badge-status badge-${task.frontmatter.status.toLowerCase()}`}>{task.frontmatter.status}</span>
+      <span className="task-row-badges">
+        <span className={`badge badge-${task.frontmatter.priority.toLowerCase()}`}>{task.frontmatter.priority}</span>
+        <span className={`badge badge-${task.frontmatter.status.toLowerCase()}`}>{task.frontmatter.status}</span>
+      </span>
       <strong>{task.frontmatter.title}</strong>
       <small>{task.path}</small>
       <small>Updated {formatDate(task.frontmatter.updatedAt)}</small>
@@ -315,9 +317,9 @@ export function App(): ReactElement {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">Markdown Task Viewer v0</p>
-          <h1>Local tasks, direct file control.</h1>
+        <div className="app-header-left">
+          <h1>Markdown Task Viewer</h1>
+          <p className="eyebrow">v0</p>
         </div>
         <button
           type="button"
@@ -345,33 +347,35 @@ export function App(): ReactElement {
             <span>{tasks.length} items</span>
           </div>
 
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => void handleDragEnd(event)}>
-            <SortableContext items={tasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
-              <div className="task-list">
-                {tasks.map((task) => (
-                  <SortableTaskItem
-                    key={task.path}
-                    task={task}
-                    selected={task.path === selectedPath}
-                    onSelect={setSelectedPath}
-                  />
-                ))}
-                {tasks.length === 0 ? <p className="empty-list">No tasks yet. Create your first markdown task.</p> : null}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <div className="sidebar-scroll">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => void handleDragEnd(event)}>
+              <SortableContext items={tasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
+                <div className="task-list">
+                  {tasks.map((task) => (
+                    <SortableTaskItem
+                      key={task.path}
+                      task={task}
+                      selected={task.path === selectedPath}
+                      onSelect={setSelectedPath}
+                    />
+                  ))}
+                  {tasks.length === 0 ? <p className="empty-list">No tasks yet. Create your first markdown task.</p> : null}
+                </div>
+              </SortableContext>
+            </DndContext>
 
-          {errors.length > 0 ? (
-            <div className="error-panel">
-              <h3>Unreadable Markdown</h3>
-              {errors.map((error) => (
-                <p key={error.path}>
-                  <strong>{error.path}</strong>
-                  <span>{error.message}</span>
-                </p>
-              ))}
-            </div>
-          ) : null}
+            {errors.length > 0 ? (
+              <div className="error-panel">
+                <h3>Unreadable Markdown</h3>
+                {errors.map((error) => (
+                  <p key={error.path}>
+                    <strong>{error.path}</strong>
+                    <span>{error.message}</span>
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className="panel editor-panel">
@@ -437,7 +441,6 @@ export function App(): ReactElement {
                   value={draft.content}
                   onChange={(event) => setDraft({ ...draft, content: event.target.value })}
                   placeholder="# Notes"
-                  rows={18}
                 />
               </label>
 
@@ -455,14 +458,14 @@ export function App(): ReactElement {
                   </button>
                 )}
               </div>
+
+              {notice ? <p className="notice">{notice}</p> : null}
             </div>
           ) : (
             <div className="empty-editor">
               <p>Select a task to edit it, or create a new one.</p>
             </div>
           )}
-
-          {notice ? <p className="notice">{notice}</p> : null}
         </section>
       </main>
     </div>
