@@ -36,7 +36,7 @@ describe("server api", () => {
     expect(response.statusCode).toBe(201);
     const createdPath = response.json().path as string;
     const markdown = await readFile(path.join(rootDir, createdPath), "utf8");
-    const order = await readFile(path.join(rootDir, ".md-task-viewer-order.json"), "utf8");
+    const order = await readFile(path.join(rootDir, ".md-task-viewer.json"), "utf8");
     expect(markdown).toContain("title: First Task");
     expect(order).toContain(createdPath);
 
@@ -97,7 +97,7 @@ describe("server api", () => {
     });
 
     expect(response.statusCode).toBe(204);
-    const order = await readFile(path.join(rootDir, ".md-task-viewer-order.json"), "utf8");
+    const order = await readFile(path.join(rootDir, ".md-task-viewer.json"), "utf8");
     expect(order).toContain('"order": []');
 
     await app.close();

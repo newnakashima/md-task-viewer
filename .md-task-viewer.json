@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "taskDirs": [
+    "tasks"
+  ],
+  "order": [
+    "tasks/タイトルをそのままファイル名にしたい.md"
+  ]
+}

@@ -2,9 +2,9 @@ import matter from "gray-matter";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import {
+  CONFIG_FILE_NAME,
+  type ConfigFile,
   type CreateTaskInput,
-  ORDER_FILE_NAME,
-  type OrderFile,
   type TaskFrontmatter,
   type TaskListResponse,
   type TaskParseError,
@@ -136,7 +136,7 @@ async function readDirectoryRecursive(rootDir: string, currentDir: string, resul
       continue;
     }
 
-    if (entry.name === ORDER_FILE_NAME) {
+    if (entry.name === CONFIG_FILE_NAME) {
       continue;
     }
 
@@ -148,9 +148,27 @@ async function readDirectoryRecursive(rootDir: string, currentDir: string, resul
   }
 }
 
-async function listMarkdownFiles(rootDir: string): Promise<string[]> {
+async function listMarkdownFiles(rootDir: string, taskDirs: string[]): Promise<string[]> {
   const results: string[] = [];
-  await readDirectoryRecursive(rootDir, rootDir, results);
+  const seen = new Set<string>();
+
+  for (const taskDir of taskDirs) {
+    const scanDir = path.resolve(rootDir, taskDir);
+    try {
+      await fs.access(scanDir);
+    } catch {
+      continue;
+    }
+    const dirResults: string[] = [];
+    await readDirectoryRecursive(rootDir, scanDir, dirResults);
+    for (const filePath of dirResults) {
+      if (!seen.has(filePath)) {
+        seen.add(filePath);
+        results.push(filePath);
+      }
+    }
+  }
+
   return results.sort();
 }
 
@@ -172,22 +190,31 @@ export async function parseTask(rootDir: string, relativePath: string): Promise<
   };
 }
 
-async function reconcileOrder(rootDir: string, taskPaths: string[]): Promise<{ order: string[]; changed: boolean }> {
-  const orderFilePath = path.join(rootDir, ORDER_FILE_NAME);
-  let order: string[] = [];
+export async function readConfig(rootDir: string): Promise<ConfigFile> {
+  const configFilePath = path.join(rootDir, CONFIG_FILE_NAME);
 
   try {
-    const raw = await fs.readFile(orderFilePath, "utf8");
-    const parsed = JSON.parse(raw) as Partial<OrderFile>;
-    if (Array.isArray(parsed.order)) {
-      order = parsed.order.filter((item): item is string => typeof item === "string");
-    }
+    const raw = await fs.readFile(configFilePath, "utf8");
+    const parsed = JSON.parse(raw) as Partial<ConfigFile>;
+    const taskDirs = Array.isArray(parsed.taskDirs)
+      ? parsed.taskDirs.filter((item): item is string => typeof item === "string")
+      : ["."];
+    const order = Array.isArray(parsed.order)
+      ? parsed.order.filter((item): item is string => typeof item === "string")
+      : [];
+    return { version: parsed.version ?? 1, taskDirs, order };
   } catch (error) {
     const maybeError = error as NodeJS.ErrnoException;
     if (maybeError.code !== "ENOENT") {
       throw error;
     }
+    return { version: 1, taskDirs: ["."], order: [] };
   }
+}
+
+async function reconcileOrder(rootDir: string, taskPaths: string[]): Promise<{ order: string[]; changed: boolean }> {
+  const config = await readConfig(rootDir);
+  const order = config.order;
 
   const known = new Set(taskPaths);
   const nextOrder = order.filter((item) => known.has(item));
@@ -207,12 +234,31 @@ export async function saveOrder(rootDir: string, order: string[]): Promise<void>
       order.map((item) => ensureMarkdownExtension(normalizeRelativePath(item)))
     )
   );
-  const payload: OrderFile = { version: 1, order: normalized };
-  await fs.writeFile(path.join(rootDir, ORDER_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  const existing = await readConfig(rootDir);
+  const payload: ConfigFile = { version: 1, taskDirs: existing.taskDirs, order: normalized };
+  await fs.writeFile(path.join(rootDir, CONFIG_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+export async function saveConfig(rootDir: string, taskDirs: string[]): Promise<ConfigFile> {
+  const validated = taskDirs.map((dir) => {
+    const normalized = dir.trim().replace(/\\/g, "/").replace(/\/+$/, "") || ".";
+    if (normalized.startsWith("../") || normalized.includes("/../")) {
+      throw new ValidationError("taskDirs must stay within the workspace root.");
+    }
+    return normalized;
+  });
+  if (validated.length === 0) {
+    throw new ValidationError("taskDirs must contain at least one directory.");
+  }
+  const existing = await readConfig(rootDir);
+  const payload: ConfigFile = { version: 1, taskDirs: validated, order: existing.order };
+  await fs.writeFile(path.join(rootDir, CONFIG_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return payload;
 }
 
 export async function listTasks(rootDir: string): Promise<TaskListResponse> {
-  const files = await listMarkdownFiles(rootDir);
+  const config = await readConfig(rootDir);
+  const files = await listMarkdownFiles(rootDir, config.taskDirs);
   const errors: TaskParseError[] = [];
   const tasks = await Promise.all(
     files.map(async (relativePath) => {
@@ -415,12 +461,13 @@ export function parseOrderPayload(input: unknown): string[] {
   return input.map((item) => ensureMarkdownExtension(normalizeRelativePath(String(item))));
 }
 
-export async function readOrder(rootDir: string): Promise<OrderFile> {
+export async function readOrder(rootDir: string): Promise<ConfigFile> {
+  const config = await readConfig(rootDir);
   const { order } = await reconcileOrder(
     rootDir,
     (await listTasks(rootDir)).tasks.map((task) => task.path)
   );
-  return { version: 1, order };
+  return { version: 1, taskDirs: config.taskDirs, order };
 }
 
 export const taskStoreUtils = {
