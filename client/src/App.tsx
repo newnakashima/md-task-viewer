@@ -227,10 +227,16 @@ export function App(): ReactElement {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [taskDirs, setTaskDirs] = useState<string[]>(["."]);
   const [pathManuallyEdited, setPathManuallyEdited] = useState<boolean>(false);
+  const [hideDone, setHideDone] = useState<boolean>(true);
 
   const selectedTask = useMemo(
     () => tasks.find((task) => task.path === selectedPath) ?? null,
     [selectedPath, tasks]
+  );
+
+  const filteredTasks = useMemo(
+    () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
+    [tasks, hideDone]
   );
 
   const sensors = useSensors(
@@ -471,14 +477,20 @@ export function App(): ReactElement {
         <section className="panel">
           <div className="panel-header">
             <h2>Tasks</h2>
-            <span>{tasks.length} items</span>
+            <span className="panel-header-right">
+              <label className="filter-toggle">
+                <input type="checkbox" checked={hideDone} onChange={() => setHideDone(!hideDone)} />
+                <span>Hide DONE</span>
+              </label>
+              <span>{filteredTasks.length} items</span>
+            </span>
           </div>
 
           <div className="sidebar-scroll">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => void handleDragEnd(event)}>
-              <SortableContext items={tasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={filteredTasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
                 <div className="task-list">
-                  {tasks.map((task) => (
+                  {filteredTasks.map((task) => (
                     <SortableTaskItem
                       key={task.path}
                       task={task}
@@ -492,7 +504,7 @@ export function App(): ReactElement {
                       }}
                     />
                   ))}
-                  {tasks.length === 0 ? <p className="empty-list">No tasks yet. Create your first markdown task.</p> : null}
+                  {filteredTasks.length === 0 ? <p className="empty-list">{hideDone ? "No active tasks." : "No tasks yet. Create your first markdown task."}</p> : null}
                 </div>
               </SortableContext>
             </DndContext>

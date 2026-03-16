@@ -1,9 +1,9 @@
 ---
 title: DONEのタスクを除外するフィルター追加
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-03-16T12:26:26.328Z'
-updatedAt: '2026-03-16T12:26:31.559Z'
+updatedAt: '2026-03-16T13:00:08.432Z'
 ---
 # 概要
 
