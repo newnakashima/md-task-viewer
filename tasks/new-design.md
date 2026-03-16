@@ -1,9 +1,9 @@
 ---
 title: デザインを刷新
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-03-16T12:16:43.755Z'
-updatedAt: '2026-03-16T12:16:43.755Z'
+updatedAt: '2026-03-16T12:52:42.264Z'
 ---
 # デザインを刷新
 

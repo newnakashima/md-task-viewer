@@ -4,9 +4,10 @@
     "tasks"
   ],
   "order": [
-    "tasks/task-details-doesnt-updated.md",
-    "tasks/new-design.md",
     "tasks/DONEのタスクを除外するフィルター追加.md",
-    "tasks/タイトルをそのままファイル名にしたい.md"
+    "tasks/STATUSとPRIORITYはSAVE無しで上書きする.md",
+    "tasks/task-details-not-updated.md",
+    "tasks/タイトルをそのままファイル名にしたい.md",
+    "tasks/new-design.md"
   ]
 }
