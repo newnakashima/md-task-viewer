@@ -1,9 +1,9 @@
 ---
 title: ignoreパスを設定できるようにする
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-03-16T13:08:34.031Z'
-updatedAt: '2026-03-16T13:08:34.031Z'
+updatedAt: '2026-03-16T13:20:20.622Z'
 ---
 たとえば、プロジェクトによって `__done__/` や `archived/` などのディレクトリ配下を、完了済タスクのmdファイルを移動させる場所として利用する可能性がある。
 

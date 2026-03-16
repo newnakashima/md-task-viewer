@@ -140,16 +140,19 @@ async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T
 
 function SettingsPanel({
   taskDirs,
+  ignorePaths,
   busy,
   onSave,
   onClose
 }: {
   taskDirs: string[];
+  ignorePaths: string[];
   busy: boolean;
-  onSave: (dirs: string[]) => void;
+  onSave: (dirs: string[], ignorePaths: string[]) => void;
   onClose: () => void;
 }): ReactElement {
   const [dirs, setDirs] = useState<string[]>(taskDirs);
+  const [ignorePatterns, setIgnorePatterns] = useState<string[]>(ignorePaths.length > 0 ? ignorePaths : [""]);
 
   function updateDir(index: number, value: string): void {
     const next = [...dirs];
@@ -163,6 +166,20 @@ function SettingsPanel({
 
   function removeDir(index: number): void {
     setDirs(dirs.filter((_, i) => i !== index));
+  }
+
+  function updateIgnore(index: number, value: string): void {
+    const next = [...ignorePatterns];
+    next[index] = value;
+    setIgnorePatterns(next);
+  }
+
+  function addIgnore(): void {
+    setIgnorePatterns([...ignorePatterns, ""]);
+  }
+
+  function removeIgnore(index: number): void {
+    setIgnorePatterns(ignorePatterns.filter((_, i) => i !== index));
   }
 
   return (
@@ -200,13 +217,41 @@ function SettingsPanel({
             ))}
           </div>
           <button type="button" className="ghost-button" onClick={addDir}>+ Add directory</button>
+
+          <label>
+            <span className="settings-label">Ignore patterns</span>
+            <small className="settings-hint">Glob patterns for paths to exclude (e.g. __done__/**, archived/**)</small>
+          </label>
+          <div className="settings-dir-list">
+            {ignorePatterns.map((pattern, index) => (
+              <div key={index} className="settings-dir-row">
+                <input
+                  value={pattern}
+                  onChange={(e) => updateIgnore(index, e.target.value)}
+                  placeholder="e.g. __done__/**"
+                />
+                <button
+                  type="button"
+                  className="ghost-button settings-remove-button"
+                  onClick={() => removeIgnore(index)}
+                  disabled={ignorePatterns.length <= 1}
+                  title="Remove"
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+          <button type="button" className="ghost-button" onClick={addIgnore}>+ Add pattern</button>
         </div>
         <div className="form-actions">
           <button
             type="button"
             className="primary-button"
             disabled={busy || dirs.every((d) => !d.trim())}
-            onClick={() => onSave(dirs.filter((d) => d.trim()))}
+            onClick={() => onSave(dirs.filter((d) => d.trim()), ignorePatterns.filter((p) => p.trim()))}
           >
             Save
           </button>
@@ -226,6 +271,7 @@ export function App(): ReactElement {
   const [busy, setBusy] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [taskDirs, setTaskDirs] = useState<string[]>(["."]);
+  const [ignorePaths, setIgnorePaths] = useState<string[]>([]);
   const [pathManuallyEdited, setPathManuallyEdited] = useState<boolean>(false);
   const [hideDone, setHideDone] = useState<boolean>(true);
 
@@ -275,21 +321,23 @@ export function App(): ReactElement {
 
   async function loadConfig(): Promise<void> {
     try {
-      const config = await requestJson<{ taskDirs: string[] }>("/api/config");
+      const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[] }>("/api/config");
       setTaskDirs(config.taskDirs);
+      setIgnorePaths(config.ignorePaths ?? []);
     } catch {
       // use defaults
     }
   }
 
-  async function saveTaskDirs(dirs: string[]): Promise<void> {
+  async function saveSettings(dirs: string[], ignore: string[]): Promise<void> {
     setBusy(true);
     try {
-      const config = await requestJson<{ taskDirs: string[] }>("/api/config", {
+      const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[] }>("/api/config", {
         method: "PUT",
-        body: JSON.stringify({ taskDirs: dirs })
+        body: JSON.stringify({ taskDirs: dirs, ignorePaths: ignore })
       });
       setTaskDirs(config.taskDirs);
+      setIgnorePaths(config.ignorePaths ?? []);
       setNotice("Settings saved.");
       await loadTasks();
     } catch (error) {
@@ -660,9 +708,10 @@ export function App(): ReactElement {
       {showSettings ? (
         <SettingsPanel
           taskDirs={taskDirs}
+          ignorePaths={ignorePaths}
           busy={busy}
-          onSave={(dirs) => {
-            void saveTaskDirs(dirs);
+          onSave={(dirs, ignore) => {
+            void saveSettings(dirs, ignore);
             setShowSettings(false);
           }}
           onClose={() => setShowSettings(false)}

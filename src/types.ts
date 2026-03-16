@@ -59,5 +59,6 @@ export interface PatchTaskFieldsInput {
 export interface ConfigFile {
   version: number;
   taskDirs: string[];
+  ignorePaths: string[];
   order: string[];
 }

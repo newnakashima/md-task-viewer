@@ -3,12 +3,15 @@
   "taskDirs": [
     "tasks"
   ],
+  "ignorePaths": [
+    "archived/**"
+  ],
   "order": [
-    "tasks/DONEのタスクを除外するフィルター追加.md",
-    "tasks/STATUSとPRIORITYはSAVE無しで上書きする.md",
-    "tasks/task-details-not-updated.md",
-    "tasks/タイトルをそのままファイル名にしたい.md",
-    "tasks/new-design.md",
-    "tasks/ignoreパスを設定できるようにする.md"
+    "tasks/ignoreパスを設定できるようにする.md",
+    "tasks/archived/DONEのタスクを除外するフィルター追加.md",
+    "tasks/archived/new-design.md",
+    "tasks/archived/STATUSとPRIORITYはSAVE無しで上書きする.md",
+    "tasks/archived/task-details-not-updated.md",
+    "tasks/archived/タイトルをそのままファイル名にしたい.md"
   ]
 }

@@ -1,4 +1,5 @@
 import matter from "gray-matter";
+import picomatch from "picomatch";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import {
@@ -149,9 +150,11 @@ async function readDirectoryRecursive(rootDir: string, currentDir: string, resul
   }
 }
 
-async function listMarkdownFiles(rootDir: string, taskDirs: string[]): Promise<string[]> {
+async function listMarkdownFiles(rootDir: string, taskDirs: string[], ignorePaths: string[]): Promise<string[]> {
   const results: string[] = [];
   const seen = new Set<string>();
+
+  const isIgnored = ignorePaths.length > 0 ? picomatch(ignorePaths) : null;
 
   for (const taskDir of taskDirs) {
     const scanDir = path.resolve(rootDir, taskDir);
@@ -165,6 +168,9 @@ async function listMarkdownFiles(rootDir: string, taskDirs: string[]): Promise<s
     for (const filePath of dirResults) {
       if (!seen.has(filePath)) {
         seen.add(filePath);
+        if (isIgnored && isIgnored(filePath)) {
+          continue;
+        }
         results.push(filePath);
       }
     }
@@ -200,16 +206,19 @@ export async function readConfig(rootDir: string): Promise<ConfigFile> {
     const taskDirs = Array.isArray(parsed.taskDirs)
       ? parsed.taskDirs.filter((item): item is string => typeof item === "string")
       : ["."];
+    const ignorePaths = Array.isArray(parsed.ignorePaths)
+      ? parsed.ignorePaths.filter((item): item is string => typeof item === "string")
+      : [];
     const order = Array.isArray(parsed.order)
       ? parsed.order.filter((item): item is string => typeof item === "string")
       : [];
-    return { version: parsed.version ?? 1, taskDirs, order };
+    return { version: parsed.version ?? 1, taskDirs, ignorePaths, order };
   } catch (error) {
     const maybeError = error as NodeJS.ErrnoException;
     if (maybeError.code !== "ENOENT") {
       throw error;
     }
-    return { version: 1, taskDirs: ["."], order: [] };
+    return { version: 1, taskDirs: ["."], ignorePaths: [], order: [] };
   }
 }
 
@@ -236,11 +245,11 @@ export async function saveOrder(rootDir: string, order: string[]): Promise<void>
     )
   );
   const existing = await readConfig(rootDir);
-  const payload: ConfigFile = { version: 1, taskDirs: existing.taskDirs, order: normalized };
+  const payload: ConfigFile = { version: 1, taskDirs: existing.taskDirs, ignorePaths: existing.ignorePaths, order: normalized };
   await fs.writeFile(path.join(rootDir, CONFIG_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
-export async function saveConfig(rootDir: string, taskDirs: string[]): Promise<ConfigFile> {
+export async function saveConfig(rootDir: string, taskDirs: string[], ignorePaths?: string[]): Promise<ConfigFile> {
   const validated = taskDirs.map((dir) => {
     const normalized = dir.trim().replace(/\\/g, "/").replace(/\/+$/, "") || ".";
     if (normalized.startsWith("../") || normalized.includes("/../")) {
@@ -252,14 +261,15 @@ export async function saveConfig(rootDir: string, taskDirs: string[]): Promise<C
     throw new ValidationError("taskDirs must contain at least one directory.");
   }
   const existing = await readConfig(rootDir);
-  const payload: ConfigFile = { version: 1, taskDirs: validated, order: existing.order };
+  const validatedIgnorePaths = ignorePaths ?? existing.ignorePaths;
+  const payload: ConfigFile = { version: 1, taskDirs: validated, ignorePaths: validatedIgnorePaths, order: existing.order };
   await fs.writeFile(path.join(rootDir, CONFIG_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   return payload;
 }
 
 export async function listTasks(rootDir: string): Promise<TaskListResponse> {
   const config = await readConfig(rootDir);
-  const files = await listMarkdownFiles(rootDir, config.taskDirs);
+  const files = await listMarkdownFiles(rootDir, config.taskDirs, config.ignorePaths);
   const errors: TaskParseError[] = [];
   const tasks = await Promise.all(
     files.map(async (relativePath) => {
@@ -508,7 +518,7 @@ export async function readOrder(rootDir: string): Promise<ConfigFile> {
     rootDir,
     (await listTasks(rootDir)).tasks.map((task) => task.path)
   );
-  return { version: 1, taskDirs: config.taskDirs, order };
+  return { version: 1, taskDirs: config.taskDirs, ignorePaths: config.ignorePaths, order };
 }
 
 export const taskStoreUtils = {

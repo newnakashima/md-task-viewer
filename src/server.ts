@@ -119,12 +119,19 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
 
   app.put("/api/config", async (request, reply) => {
     try {
-      const body = request.body as { taskDirs?: unknown } | null;
+      const body = request.body as { taskDirs?: unknown; ignorePaths?: unknown } | null;
       const taskDirs = body?.taskDirs;
       if (!Array.isArray(taskDirs) || taskDirs.some((item) => typeof item !== "string")) {
         throw new ValidationError("taskDirs must be an array of strings.");
       }
-      const config = await saveConfig(options.rootDir, taskDirs as string[]);
+      let ignorePaths: string[] | undefined;
+      if (body?.ignorePaths !== undefined) {
+        if (!Array.isArray(body.ignorePaths) || body.ignorePaths.some((item) => typeof item !== "string")) {
+          throw new ValidationError("ignorePaths must be an array of strings.");
+        }
+        ignorePaths = body.ignorePaths as string[];
+      }
+      const config = await saveConfig(options.rootDir, taskDirs as string[], ignorePaths);
       return reply.send(config);
     } catch (error) {
       sendJsonError(reply, error);
