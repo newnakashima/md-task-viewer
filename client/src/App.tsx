@@ -739,10 +739,10 @@ export function App(): ReactElement {
 
                         if (textAfterMarker.trim() === "") {
                           // Empty list item — remove the marker, leave blank line
-                          const newValue = value.slice(0, lineStart) + "\n" + value.slice(selectionStart);
+                          const newValue = value.slice(0, lineStart) + value.slice(selectionStart);
                           setDraft({ ...draft, content: newValue });
                           requestAnimationFrame(() => {
-                            ta.selectionStart = ta.selectionEnd = lineStart + 1;
+                            ta.selectionStart = ta.selectionEnd = lineStart;
                           });
                         } else {
                           // Continue the list
