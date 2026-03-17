@@ -14,6 +14,7 @@
     "tasks/archived/task-details-not-updated.md",
     "tasks/archived/タイトルをそのままファイル名にしたい.md",
     "tasks/README.md を英語化.md",
-    "tasks/npm-publish.md"
+    "tasks/npm-publish.md",
+    "tasks/リストの場合に改行したら自動でリスト記法が挿入されるようにする.md"
   ]
 }
