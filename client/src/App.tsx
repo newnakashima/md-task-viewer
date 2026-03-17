@@ -676,6 +676,90 @@ export function App(): ReactElement {
                 <textarea
                   value={draft.content}
                   onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.nativeEvent.isComposing) return;
+
+                    const ta = event.currentTarget;
+                    const { selectionStart, selectionEnd, value } = ta;
+
+                    if (event.key === "Tab") {
+                      event.preventDefault();
+                      const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+                      const lineEnd = value.indexOf("\n", selectionEnd);
+                      const end = lineEnd === -1 ? value.length : lineEnd;
+
+                      if (selectionStart !== selectionEnd) {
+                        // Multi-line indent/dedent
+                        const selectedLines = value.slice(lineStart, end);
+                        const newLines = selectedLines
+                          .split("\n")
+                          .map((line) =>
+                            event.shiftKey
+                              ? line.startsWith("  ") ? line.slice(2) : line
+                              : "  " + line
+                          )
+                          .join("\n");
+                        const newValue = value.slice(0, lineStart) + newLines + value.slice(end);
+                        setDraft({ ...draft, content: newValue });
+                        requestAnimationFrame(() => {
+                          ta.selectionStart = lineStart;
+                          ta.selectionEnd = lineStart + newLines.length;
+                        });
+                      } else if (event.shiftKey) {
+                        // Shift+Tab: remove 2 spaces from line start
+                        const line = value.slice(lineStart, end);
+                        if (line.startsWith("  ")) {
+                          const newValue = value.slice(0, lineStart) + line.slice(2) + value.slice(end);
+                          const newCursor = Math.max(lineStart, selectionStart - 2);
+                          setDraft({ ...draft, content: newValue });
+                          requestAnimationFrame(() => {
+                            ta.selectionStart = ta.selectionEnd = newCursor;
+                          });
+                        }
+                      } else {
+                        // Tab: insert 2 spaces at line start
+                        const newValue = value.slice(0, lineStart) + "  " + value.slice(lineStart);
+                        setDraft({ ...draft, content: newValue });
+                        requestAnimationFrame(() => {
+                          ta.selectionStart = ta.selectionEnd = selectionStart + 2;
+                        });
+                      }
+                      return;
+                    }
+
+                    if (event.key === "Enter") {
+                      const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+                      const currentLine = value.slice(lineStart, selectionStart);
+                      const listMatch = currentLine.match(/^(\s*)([-*]|\d+\.)\s/);
+
+                      if (listMatch) {
+                        event.preventDefault();
+                        const [fullMatch, indent, marker] = listMatch;
+                        const textAfterMarker = currentLine.slice(fullMatch.length);
+
+                        if (textAfterMarker.trim() === "") {
+                          // Empty list item — remove the marker, leave blank line
+                          const newValue = value.slice(0, lineStart) + "\n" + value.slice(selectionStart);
+                          setDraft({ ...draft, content: newValue });
+                          requestAnimationFrame(() => {
+                            ta.selectionStart = ta.selectionEnd = lineStart + 1;
+                          });
+                        } else {
+                          // Continue the list
+                          const nextMarker = /^\d+\./.test(marker)
+                            ? `${parseInt(marker) + 1}.`
+                            : marker;
+                          const insertion = `\n${indent}${nextMarker} `;
+                          const newValue = value.slice(0, selectionStart) + insertion + value.slice(selectionEnd);
+                          const newCursor = selectionStart + insertion.length;
+                          setDraft({ ...draft, content: newValue });
+                          requestAnimationFrame(() => {
+                            ta.selectionStart = ta.selectionEnd = newCursor;
+                          });
+                        }
+                      }
+                    }
+                  }}
                   placeholder="# Notes"
                 />
               </label>
