@@ -783,7 +783,7 @@ export function App(): ReactElement {
                 )}
               </div>
 
-              <p className="notice">{notice}&nbsp;</p>
+              <p className="notice">{notice}</p>
             </div>
           ) : (
             <div className="empty-editor">

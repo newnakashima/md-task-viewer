@@ -475,6 +475,7 @@ button {
   padding-top: 6px;
   color: var(--accent);
   font-size: 0.8rem;
+  height: 1.5rem;
   flex-shrink: 0;
 }
 
