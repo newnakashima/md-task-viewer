@@ -647,8 +647,8 @@ export function App(): ReactElement {
                       const dir = taskDirs[0] || "";
                       const dirPath = dir ? `${dir}/` : "";
                       updates.path = newTitle.trim()
-                        ? `${dirPath}/${slugify(newTitle)}.md`
-                        : `${dirPath}/`;
+                        ? `${dirPath}${slugify(newTitle)}.md`
+                        : dirPath;
                     }
                     setDraft({ ...draft, ...updates });
                   }}
