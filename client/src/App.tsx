@@ -17,6 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import { slugify } from "~/slugify";
+
 type Priority = "MUST" | "WANT";
 type Status = "TODO" | "WIP" | "DONE";
 
@@ -643,9 +645,10 @@ export function App(): ReactElement {
                     const updates: Partial<DraftTask> = { title: newTitle };
                     if (!pathManuallyEdited && draft.originalPath === null) {
                       const dir = taskDirs[0] || "";
+                      const dirPath = dir ? `${dir}/` : "";
                       updates.path = newTitle.trim()
-                        ? `${dir}/${newTitle}.md`
-                        : `${dir}/`;
+                        ? `${dirPath}/${slugify(newTitle)}.md`
+                        : `${dirPath}/`;
                     }
                     setDraft({ ...draft, ...updates });
                   }}

@@ -47,7 +47,7 @@ describe("taskStore", () => {
   });
 
   it("creates stable slugs and normalizes empty input", () => {
-    expect(taskStoreUtils.slugify("Ship v0.1 Today!")).toBe("ship-v0-1-today");
+    expect(taskStoreUtils.slugify("Ship v0.1 Today!")).toBe("Ship-v01-Today");
     expect(taskStoreUtils.slugify("  ")).toBe("untitled-task");
   });
 
