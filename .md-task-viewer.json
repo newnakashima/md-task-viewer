@@ -16,6 +16,7 @@
     "tasks/README.md を英語化.md",
     "tasks/npm-publish.md",
     "tasks/リストの場合に改行したら自動でリスト記法が挿入されるようにする.md",
-    "tasks/replace-spaces-into-hyphen.md"
+    "tasks/replace-spaces-into-hyphen.md",
+    "tasks/RELATIVE-PATH-の結果がおかしい.md"
   ]
 }
