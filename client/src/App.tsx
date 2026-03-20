@@ -277,14 +277,14 @@ export function App(): ReactElement {
   const [pathManuallyEdited, setPathManuallyEdited] = useState<boolean>(false);
   const [hideDone, setHideDone] = useState<boolean>(true);
 
-  const selectedTask = useMemo(
-    () => tasks.find((task) => task.path === selectedPath) ?? null,
-    [selectedPath, tasks]
-  );
-
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
     [tasks, hideDone]
+  );
+
+  const selectedTask = useMemo(
+    () => filteredTasks.find((task) => task.path === selectedPath) ?? null,
+    [selectedPath, filteredTasks]
   );
 
   const sensors = useSensors(
@@ -356,9 +356,17 @@ export function App(): ReactElement {
   }, []);
 
   useEffect(() => {
+    if (selectedPath && !filteredTasks.some((t) => t.path === selectedPath)) {
+      setSelectedPath(filteredTasks[0]?.path ?? null);
+    }
+  }, [filteredTasks]);
+
+  useEffect(() => {
     if (!selectedTask) {
-      if (!draft?.originalPath) {
-        setDraft((current) => current ?? null);
+      // Clear draft for existing tasks that are no longer visible (e.g., filtered out)
+      // Keep draft if it's a new task (originalPath is null)
+      if (draft?.originalPath) {
+        setDraft(null);
       }
       return;
     }
