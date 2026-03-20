@@ -1,7 +1,7 @@
 ---
 title: RELATIVE PATH の結果がおかしい
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-03-20T06:29:53.541Z'
 updatedAt: '2026-03-20T06:29:53.541Z'
 ---
