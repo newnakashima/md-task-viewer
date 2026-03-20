@@ -1,6 +1,6 @@
 ---
 name: pr
-description: A ultimately simple skill for creating PR on GitHub.
+description: An ultimately simple skill for creating PR on GitHub.
 ---
 
 # PR Skill
