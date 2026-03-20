@@ -15,6 +15,7 @@ import {
   type TaskStatus,
   type UpdateTaskInput
 } from "./types.js";
+import { slugify } from "./slugify.js";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".markdown"]);
 const REQUIRED_PRIORITY: TaskPriority[] = ["MUST", "WANT"];
@@ -42,17 +43,6 @@ function ensureMarkdownExtension(filePath: string): string {
 
 function asUtcISOString(date: Date): string {
   return date.toISOString();
-}
-
-function slugify(value: string): string {
-  const slug = value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return slug || "untitled-task";
 }
 
 function buildDefaults(filePath: string, stats: { birthtime: Date; mtime: Date }): TaskFrontmatter {
