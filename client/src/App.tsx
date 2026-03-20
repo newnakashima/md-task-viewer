@@ -524,6 +524,7 @@ export function App(): ReactElement {
             type="button"
             className="primary-button"
             onClick={() => {
+              setNotice("");
               setPathManuallyEdited(false);
               setDraft({
                 originalPath: null,
