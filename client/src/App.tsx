@@ -645,9 +645,10 @@ export function App(): ReactElement {
                     const updates: Partial<DraftTask> = { title: newTitle };
                     if (!pathManuallyEdited && draft.originalPath === null) {
                       const dir = taskDirs[0] || "";
+                      const dirPath = dir ? `${dir}/` : "";
                       updates.path = newTitle.trim()
-                        ? `${dir}/${slugify(newTitle)}.md`
-                        : `${dir}/`;
+                        ? `${dirPath}/${slugify(newTitle)}.md`
+                        : `${dirPath}/`;
                     }
                     setDraft({ ...draft, ...updates });
                   }}
