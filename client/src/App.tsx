@@ -524,6 +524,7 @@ export function App(): ReactElement {
             type="button"
             className="primary-button"
             onClick={() => {
+              setNotice("");
               setPathManuallyEdited(false);
               setDraft({
                 originalPath: null,
@@ -782,7 +783,7 @@ export function App(): ReactElement {
                 )}
               </div>
 
-              {notice ? <p className="notice">{notice}</p> : null}
+              <p className="notice">{notice}</p>
             </div>
           ) : (
             <div className="empty-editor">
