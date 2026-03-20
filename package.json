@@ -1,6 +1,6 @@
 {
   "name": "md-task-viewer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Launch a local task viewer/editor for markdown files with frontmatter",
   "license": "MIT",
   "repository": {
