@@ -4,21 +4,9 @@
     "tasks"
   ],
   "ignorePaths": [
-    "archived/**"
+    "**/archived/**"
   ],
   "order": [
-    "tasks/archived/DONEのタスクを除外するフィルター追加.md",
-    "tasks/archived/new-design.md",
-    "tasks/archived/STATUSとPRIORITYはSAVE無しで上書きする.md",
-    "tasks/archived/task-details-not-updated.md",
-    "tasks/archived/タイトルをそのままファイル名にしたい.md",
-    "tasks/NEW-TASK-を押した時に-notice-を消す.md",
-    "tasks/TASKS-に何も無いときはTASK-DETAILSを表示させない.md",
-    "tasks/archived/README.md を英語化.md",
-    "tasks/archived/RELATIVE-PATH-の結果がおかしい.md",
-    "tasks/archived/ignoreパスを設定できるようにする.md",
-    "tasks/archived/npm-publish.md",
-    "tasks/archived/replace-spaces-into-hyphen.md",
-    "tasks/archived/リストの場合に改行したら自動でリスト記法が挿入されるようにする.md"
+    "tasks/タスクに対してコマンドを実行できる機能.md"
   ]
 }
