@@ -137,6 +137,31 @@ describe("server api", () => {
     await app.close();
   });
 
+  it("executes commands with passBody stdin via API", async () => {
+    await writeFile(
+      path.join(rootDir, "task.md"),
+      "---\ntitle: Test\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nHello from stdin",
+      "utf8"
+    );
+    const app = await createServer({ rootDir, clientDir: null });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/execute",
+      payload: {
+        taskPath: "task.md",
+        commands: [{ command: "cat", passBody: "stdin" }]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const result = response.json();
+    expect(result.stdout).toContain("Hello from stdin");
+    expect(result.exitCode).toBe(0);
+
+    await app.close();
+  });
+
   it("returns 400 when no commands are configured", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),

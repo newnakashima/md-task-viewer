@@ -91,6 +91,13 @@ describe("executeCommandPipeline", () => {
     expect(result.stdout).toBe("stdin content");
   });
 
+  it("passes task body as argument when passBody is arg", async () => {
+    const rootDir = await createTempDir();
+    const task = makeTask({ content: "arg content" });
+    const result = await executeCommandPipeline(rootDir, [{ command: "echo", passBody: "arg" }], task);
+    expect(result.stdout.trim()).toBe("arg content");
+  });
+
   it("propagates non-zero exit code", async () => {
     const rootDir = await createTempDir();
     const task = makeTask();

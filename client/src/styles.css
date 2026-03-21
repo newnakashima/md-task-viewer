@@ -808,8 +808,11 @@ button {
   align-items: center;
 }
 
-.command-step-row input {
+.command-step-row input,
+.task-form .command-step-row input {
   flex: 1;
+  width: auto;
+  min-width: 0;
   padding: 7px 10px;
   border: 1px solid var(--panel-border);
   border-radius: 0;
@@ -819,12 +822,16 @@ button {
   transition: border-color 100ms ease;
 }
 
-.command-step-row input:focus {
+.command-step-row input:focus,
+.task-form .command-step-row input:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-.command-step-row select {
+.command-step-row select,
+.task-form .command-step-row select {
+  width: auto;
+  min-width: 0;
   padding: 7px 6px;
   border: 1px solid var(--panel-border);
   border-radius: 0;
@@ -834,7 +841,8 @@ button {
   flex-shrink: 0;
 }
 
-.command-step-row select:focus {
+.command-step-row select:focus,
+.task-form .command-step-row select:focus {
   outline: none;
   border-color: var(--accent);
 }

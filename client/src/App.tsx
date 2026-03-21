@@ -579,8 +579,8 @@ export function App(): ReactElement {
     }
   }
 
-  async function executeCommands(): Promise<void> {
-    if (!draft?.originalPath) {
+  async function executeCommands(commands: CommandStep[]): Promise<void> {
+    if (!draft?.originalPath || commands.length === 0) {
       return;
     }
     setExecuting(true);
@@ -588,7 +588,7 @@ export function App(): ReactElement {
     try {
       const result = await requestJson<CommandExecutionResult>("/api/execute", {
         method: "POST",
-        body: JSON.stringify({ taskPath: draft.originalPath })
+        body: JSON.stringify({ taskPath: draft.originalPath, commands })
       });
       setExecutionResult(result);
     } catch (error) {
@@ -917,12 +917,12 @@ export function App(): ReactElement {
                             : [{ command: "" }]
                         }
                         onChange={(steps) => {
-                          const filtered = steps.filter((s) => s.command.trim());
+                          const hasContent = steps.some((s) => s.command.trim());
                           setDraft({
                             ...draft,
                             extraFrontmatter: {
                               ...draft.extraFrontmatter,
-                              commands: filtered.length > 0 ? filtered : undefined
+                              commands: hasContent ? steps : undefined
                             }
                           });
                         }}
@@ -963,11 +963,11 @@ export function App(): ReactElement {
           ) : draft && activeTab === "execute" ? (
             <div className="execute-panel">
               {(() => {
-                const taskCmds = Array.isArray(draft.extraFrontmatter.commands) && draft.extraFrontmatter.commands.length > 0
-                  ? (draft.extraFrontmatter.commands as CommandStep[])
+                const savedTaskCmds = selectedTask && Array.isArray(selectedTask.extraFrontmatter.commands) && selectedTask.extraFrontmatter.commands.length > 0
+                  ? (selectedTask.extraFrontmatter.commands as CommandStep[])
                   : null;
-                const resolvedCmds = taskCmds ?? (globalCommands.length > 0 ? globalCommands : []);
-                const source = taskCmds ? "Task override" : "Global";
+                const resolvedCmds = savedTaskCmds ?? (globalCommands.length > 0 ? globalCommands : []);
+                const source = savedTaskCmds ? "Task override" : "Global";
 
                 return resolvedCmds.length > 0 ? (
                   <>
@@ -992,7 +992,7 @@ export function App(): ReactElement {
                         type="button"
                         className="primary-button"
                         disabled={executing}
-                        onClick={() => void executeCommands()}
+                        onClick={() => void executeCommands(resolvedCmds)}
                       >
                         {executing ? "Executing..." : "Execute"}
                       </button>

@@ -29,7 +29,14 @@ export async function executeCommandPipeline(
   const startTime = Date.now();
 
   return new Promise<CommandExecutionResult>((resolve) => {
-    const resolvedCommands = steps.map((step) => substituteVariables(step.command, vars));
+    const resolvedCommands = steps.map((step, index) => {
+      let cmd = substituteVariables(step.command, vars);
+      if (index === 0 && step.passBody === "arg") {
+        const escaped = task.content.replace(/'/g, "'\\''");
+        cmd = `${cmd} '${escaped}'`;
+      }
+      return cmd;
+    });
 
     const processes: ReturnType<typeof spawn>[] = [];
     for (let index = 0; index < resolvedCommands.length; index++) {
@@ -55,19 +62,9 @@ export async function executeCommandPipeline(
     const firstProc = processes[0];
     if (firstStep.passBody === "stdin" && firstProc.stdin) {
       firstProc.stdin.write(task.content);
-      firstProc.stdin.end();
-    } else if (firstStep.passBody === "arg") {
-      // arg mode is handled via $TASK_BODY variable substitution in the command string
-      // if no pipe input, close stdin
-      if (processes.length === 1) {
-        firstProc.stdin?.end();
-      }
-    } else {
-      // no body passing, close stdin if single command
-      if (processes.length === 1) {
-        firstProc.stdin?.end();
-      }
     }
+    // Always close first process stdin (body written above if passBody is stdin)
+    firstProc.stdin?.end();
 
     const lastProc = processes[processes.length - 1];
     const stdoutChunks: Buffer[] = [];
