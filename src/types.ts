@@ -56,9 +56,22 @@ export interface PatchTaskFieldsInput {
   status?: TaskStatus;
 }
 
+export interface CommandStep {
+  command: string;
+  passBody?: "arg" | "stdin" | false;
+}
+
+export interface CommandExecutionResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  duration: number;
+}
+
 export interface ConfigFile {
   version: number;
   taskDirs: string[];
   ignorePaths: string[];
   order: string[];
+  commands?: CommandStep[];
 }

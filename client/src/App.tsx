@@ -22,6 +22,18 @@ import { slugify } from "~/slugify";
 type Priority = "MUST" | "WANT";
 type Status = "TODO" | "WIP" | "DONE";
 
+interface CommandStep {
+  command: string;
+  passBody?: "arg" | "stdin" | false;
+}
+
+interface CommandExecutionResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  duration: number;
+}
+
 interface TaskRecord {
   path: string;
   content: string;
@@ -140,21 +152,88 @@ async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T
   return (await response.json()) as T;
 }
 
+function RemoveButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }): ReactElement {
+  return (
+    <button
+      type="button"
+      className="ghost-button settings-remove-button"
+      onClick={onClick}
+      disabled={disabled}
+      title="Remove"
+    >
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+      </svg>
+    </button>
+  );
+}
+
+function CommandStepEditor({
+  steps,
+  onChange,
+  showPassBody
+}: {
+  steps: CommandStep[];
+  onChange: (steps: CommandStep[]) => void;
+  showPassBody: boolean;
+}): ReactElement {
+  function updateStep(index: number, field: keyof CommandStep, value: string | false): void {
+    const next = [...steps];
+    next[index] = { ...next[index], [field]: value };
+    onChange(next);
+  }
+
+  return (
+    <>
+      <div className="settings-dir-list">
+        {steps.map((step, index) => (
+          <div key={index} className="command-step-row">
+            <input
+              value={step.command}
+              onChange={(e) => updateStep(index, "command", e.target.value)}
+              placeholder={`e.g. echo $TASK_TITLE`}
+            />
+            {showPassBody && index === 0 ? (
+              <select
+                value={step.passBody === false ? "false" : (step.passBody || "false")}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateStep(index, "passBody", v === "false" ? false : v);
+                }}
+                title="Pass task body"
+              >
+                <option value="false">No body</option>
+                <option value="arg">Body as arg</option>
+                <option value="stdin">Body as stdin</option>
+              </select>
+            ) : null}
+            <RemoveButton onClick={() => onChange(steps.filter((_, i) => i !== index))} disabled={steps.length <= 1} />
+          </div>
+        ))}
+      </div>
+      <button type="button" className="ghost-button" onClick={() => onChange([...steps, { command: "" }])}>+ Add command</button>
+    </>
+  );
+}
+
 function SettingsPanel({
   taskDirs,
   ignorePaths,
+  commands,
   busy,
   onSave,
   onClose
 }: {
   taskDirs: string[];
   ignorePaths: string[];
+  commands: CommandStep[];
   busy: boolean;
-  onSave: (dirs: string[], ignorePaths: string[]) => void;
+  onSave: (dirs: string[], ignorePaths: string[], commands: CommandStep[]) => void;
   onClose: () => void;
 }): ReactElement {
   const [dirs, setDirs] = useState<string[]>(taskDirs);
   const [ignorePatterns, setIgnorePatterns] = useState<string[]>(ignorePaths.length > 0 ? ignorePaths : [""]);
+  const [cmdSteps, setCmdSteps] = useState<CommandStep[]>(commands.length > 0 ? commands : [{ command: "" }]);
 
   function updateDir(index: number, value: string): void {
     const next = [...dirs];
@@ -204,17 +283,7 @@ function SettingsPanel({
                   onChange={(e) => updateDir(index, e.target.value)}
                   placeholder="e.g. tasks"
                 />
-                <button
-                  type="button"
-                  className="ghost-button settings-remove-button"
-                  onClick={() => removeDir(index)}
-                  disabled={dirs.length <= 1}
-                  title="Remove"
-                >
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
+                <RemoveButton onClick={() => removeDir(index)} disabled={dirs.length <= 1} />
               </div>
             ))}
           </div>
@@ -232,28 +301,28 @@ function SettingsPanel({
                   onChange={(e) => updateIgnore(index, e.target.value)}
                   placeholder="e.g. __done__/**"
                 />
-                <button
-                  type="button"
-                  className="ghost-button settings-remove-button"
-                  onClick={() => removeIgnore(index)}
-                  disabled={ignorePatterns.length <= 1}
-                  title="Remove"
-                >
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
+                <RemoveButton onClick={() => removeIgnore(index)} disabled={ignorePatterns.length <= 1} />
               </div>
             ))}
           </div>
           <button type="button" className="ghost-button" onClick={addIgnore}>+ Add pattern</button>
+
+          <label>
+            <span className="settings-label">Commands</span>
+            <small className="settings-hint">Commands to execute against tasks. Variables: $TASK_TITLE, $TASK_FILEPATH, $TASK_BODY</small>
+          </label>
+          <CommandStepEditor steps={cmdSteps} onChange={setCmdSteps} showPassBody={true} />
         </div>
         <div className="form-actions">
           <button
             type="button"
             className="primary-button"
             disabled={busy || dirs.every((d) => !d.trim())}
-            onClick={() => onSave(dirs.filter((d) => d.trim()), ignorePatterns.filter((p) => p.trim()))}
+            onClick={() => onSave(
+              dirs.filter((d) => d.trim()),
+              ignorePatterns.filter((p) => p.trim()),
+              cmdSteps.filter((s) => s.command.trim())
+            )}
           >
             Save
           </button>
@@ -276,6 +345,11 @@ export function App(): ReactElement {
   const [ignorePaths, setIgnorePaths] = useState<string[]>([]);
   const [pathManuallyEdited, setPathManuallyEdited] = useState<boolean>(false);
   const [hideDone, setHideDone] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<"detail" | "execute">("detail");
+  const [globalCommands, setGlobalCommands] = useState<CommandStep[]>([]);
+  const [executionResult, setExecutionResult] = useState<CommandExecutionResult | null>(null);
+  const [executing, setExecuting] = useState<boolean>(false);
+  const [showCommandOverride, setShowCommandOverride] = useState<boolean>(false);
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -323,23 +397,25 @@ export function App(): ReactElement {
 
   async function loadConfig(): Promise<void> {
     try {
-      const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[] }>("/api/config");
+      const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[]; commands?: CommandStep[] }>("/api/config");
       setTaskDirs(config.taskDirs);
       setIgnorePaths(config.ignorePaths ?? []);
+      setGlobalCommands(config.commands ?? []);
     } catch {
       // use defaults
     }
   }
 
-  async function saveSettings(dirs: string[], ignore: string[]): Promise<void> {
+  async function saveSettings(dirs: string[], ignore: string[], commands: CommandStep[]): Promise<void> {
     setBusy(true);
     try {
-      const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[] }>("/api/config", {
+      const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[]; commands?: CommandStep[] }>("/api/config", {
         method: "PUT",
-        body: JSON.stringify({ taskDirs: dirs, ignorePaths: ignore })
+        body: JSON.stringify({ taskDirs: dirs, ignorePaths: ignore, commands })
       });
       setTaskDirs(config.taskDirs);
       setIgnorePaths(config.ignorePaths ?? []);
+      setGlobalCommands(config.commands ?? []);
       setNotice("Settings saved.");
       await loadTasks();
     } catch (error) {
@@ -503,6 +579,30 @@ export function App(): ReactElement {
     }
   }
 
+  async function executeCommands(commands: CommandStep[]): Promise<void> {
+    if (!draft?.originalPath || commands.length === 0) {
+      return;
+    }
+    setExecuting(true);
+    setExecutionResult(null);
+    try {
+      const result = await requestJson<CommandExecutionResult>("/api/execute", {
+        method: "POST",
+        body: JSON.stringify({ taskPath: draft.originalPath, commands })
+      });
+      setExecutionResult(result);
+    } catch (error) {
+      setExecutionResult({
+        stdout: "",
+        stderr: error instanceof Error ? error.message : "Execution failed.",
+        exitCode: 1,
+        duration: 0
+      });
+    } finally {
+      setExecuting(false);
+    }
+  }
+
   const isDirty =
     !!draft &&
     (draft.originalPath === null ||
@@ -574,6 +674,9 @@ export function App(): ReactElement {
                       selected={task.path === selectedPath}
                       onSelect={(path) => {
                         setSelectedPath(path);
+                        setActiveTab("detail");
+                        setExecutionResult(null);
+                        setShowCommandOverride(false);
                         const target = tasks.find((t) => t.path === path);
                         if (target) {
                           setDraft(draftFromTask(target));
@@ -606,7 +709,26 @@ export function App(): ReactElement {
             {isDirty ? <span className="dirty-state">Unsaved changes</span> : null}
           </div>
 
-          {draft ? (
+          {draft?.originalPath ? (
+            <div className="tab-bar">
+              <button
+                type="button"
+                className={`tab-button${activeTab === "detail" ? " active" : ""}`}
+                onClick={() => setActiveTab("detail")}
+              >
+                Detail
+              </button>
+              <button
+                type="button"
+                className={`tab-button${activeTab === "execute" ? " active" : ""}`}
+                onClick={() => setActiveTab("execute")}
+              >
+                Execute
+              </button>
+            </div>
+          ) : null}
+
+          {draft && activeTab === "detail" ? (
             <div className="task-form">
               <div className="field-row field-row-top">
                 <label>
@@ -776,6 +898,51 @@ export function App(): ReactElement {
                 />
               </label>
 
+              {draft.originalPath ? (
+                <>
+                  <button
+                    type="button"
+                    className="collapsible-header"
+                    onClick={() => setShowCommandOverride(!showCommandOverride)}
+                  >
+                    <span className={`collapsible-chevron${showCommandOverride ? " open" : ""}`}>&#9654;</span>
+                    Command Override
+                  </button>
+                  {showCommandOverride ? (
+                    <div className="collapsible-body">
+                      <CommandStepEditor
+                        steps={
+                          Array.isArray(draft.extraFrontmatter.commands) && draft.extraFrontmatter.commands.length > 0
+                            ? (draft.extraFrontmatter.commands as CommandStep[])
+                            : [{ command: "" }]
+                        }
+                        onChange={(steps) => {
+                          const hasContent = steps.some((s) => s.command.trim());
+                          setDraft({
+                            ...draft,
+                            extraFrontmatter: {
+                              ...draft.extraFrontmatter,
+                              commands: hasContent ? steps : undefined
+                            }
+                          });
+                        }}
+                        showPassBody={true}
+                      />
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => {
+                          const { commands: _, ...rest } = draft.extraFrontmatter;
+                          setDraft({ ...draft, extraFrontmatter: rest });
+                        }}
+                      >
+                        Reset to Global
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
               <div className="form-actions">
                 <button type="button" className="primary-button" disabled={busy} onClick={() => void saveDraft()}>
                   {draft.originalPath ? "Save Task" : "Create Task"}
@@ -793,11 +960,82 @@ export function App(): ReactElement {
 
               <p className="notice">{notice}</p>
             </div>
-          ) : (
+          ) : draft && activeTab === "execute" ? (
+            <div className="execute-panel">
+              {(() => {
+                const savedTaskCmds = selectedTask && Array.isArray(selectedTask.extraFrontmatter.commands) && selectedTask.extraFrontmatter.commands.length > 0
+                  ? (selectedTask.extraFrontmatter.commands as CommandStep[])
+                  : null;
+                const resolvedCmds = savedTaskCmds ?? (globalCommands.length > 0 ? globalCommands : []);
+                const source = savedTaskCmds ? "Task override" : "Global";
+
+                return resolvedCmds.length > 0 ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em" }}>
+                        Commands ({source})
+                      </span>
+                    </div>
+                    <div className="execute-commands">
+                      {resolvedCmds.map((step, index) => (
+                        <div key={index} className="execute-command-item">
+                          <span className="command-index">{index + 1}.</span>
+                          <code>{step.command}</code>
+                          {step.passBody && step.passBody !== false && index === 0 ? (
+                            <span className="pass-body-badge">{step.passBody}</span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={executing}
+                        onClick={() => void executeCommands(resolvedCmds)}
+                      >
+                        {executing ? "Executing..." : "Execute"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="execute-no-commands">No commands configured. Set commands in Settings or in the task&apos;s Command Override section.</p>
+                );
+              })()}
+
+              {executionResult ? (
+                <div className="execution-result">
+                  <div className="execution-result-header">
+                    <div className="execution-result-meta">
+                      <span className={executionResult.exitCode !== 0 ? "exit-code-error" : ""}>
+                        Exit: {executionResult.exitCode}
+                      </span>
+                      <span>{executionResult.duration}ms</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="ghost-button copy-button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(executionResult.stdout);
+                        setNotice("Copied to clipboard.");
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <pre>{executionResult.stdout}</pre>
+                  {executionResult.stderr ? (
+                    <pre className="execution-stderr">{executionResult.stderr}</pre>
+                  ) : null}
+                  <p className="notice">{notice}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : !draft ? (
             <div className="empty-editor">
               <p>Select a task to edit it, or create a new one.</p>
             </div>
-          )}
+          ) : null}
         </section>
       </main>
 
@@ -805,9 +1043,10 @@ export function App(): ReactElement {
         <SettingsPanel
           taskDirs={taskDirs}
           ignorePaths={ignorePaths}
+          commands={globalCommands}
           busy={busy}
-          onSave={(dirs, ignore) => {
-            void saveSettings(dirs, ignore);
+          onSave={(dirs, ignore, cmds) => {
+            void saveSettings(dirs, ignore, cmds);
             setShowSettings(false);
           }}
           onClose={() => setShowSettings(false)}
