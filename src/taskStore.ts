@@ -4,6 +4,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import {
   CONFIG_FILE_NAME,
+  type CommandStep,
   type ConfigFile,
   type CreateTaskInput,
   type PatchTaskFieldsInput,
@@ -202,7 +203,10 @@ export async function readConfig(rootDir: string): Promise<ConfigFile> {
     const order = Array.isArray(parsed.order)
       ? parsed.order.filter((item): item is string => typeof item === "string")
       : [];
-    return { version: parsed.version ?? 1, taskDirs, ignorePaths, order };
+    const commands = Array.isArray(parsed.commands)
+      ? (parsed.commands as CommandStep[])
+      : undefined;
+    return { version: parsed.version ?? 1, taskDirs, ignorePaths, order, commands };
   } catch (error) {
     const maybeError = error as NodeJS.ErrnoException;
     if (maybeError.code !== "ENOENT") {
@@ -235,11 +239,11 @@ export async function saveOrder(rootDir: string, order: string[]): Promise<void>
     )
   );
   const existing = await readConfig(rootDir);
-  const payload: ConfigFile = { version: 1, taskDirs: existing.taskDirs, ignorePaths: existing.ignorePaths, order: normalized };
+  const payload: ConfigFile = { version: 1, taskDirs: existing.taskDirs, ignorePaths: existing.ignorePaths, order: normalized, commands: existing.commands };
   await fs.writeFile(path.join(rootDir, CONFIG_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
-export async function saveConfig(rootDir: string, taskDirs: string[], ignorePaths?: string[]): Promise<ConfigFile> {
+export async function saveConfig(rootDir: string, taskDirs: string[], ignorePaths?: string[], commands?: CommandStep[]): Promise<ConfigFile> {
   const validated = taskDirs.map((dir) => {
     const normalized = dir.trim().replace(/\\/g, "/").replace(/\/+$/, "") || ".";
     if (normalized.startsWith("../") || normalized.includes("/../")) {
@@ -252,7 +256,8 @@ export async function saveConfig(rootDir: string, taskDirs: string[], ignorePath
   }
   const existing = await readConfig(rootDir);
   const validatedIgnorePaths = ignorePaths ?? existing.ignorePaths;
-  const payload: ConfigFile = { version: 1, taskDirs: validated, ignorePaths: validatedIgnorePaths, order: existing.order };
+  const validatedCommands = commands !== undefined ? commands : existing.commands;
+  const payload: ConfigFile = { version: 1, taskDirs: validated, ignorePaths: validatedIgnorePaths, order: existing.order, commands: validatedCommands };
   await fs.writeFile(path.join(rootDir, CONFIG_FILE_NAME), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   return payload;
 }
@@ -508,7 +513,7 @@ export async function readOrder(rootDir: string): Promise<ConfigFile> {
     rootDir,
     (await listTasks(rootDir)).tasks.map((task) => task.path)
   );
-  return { version: 1, taskDirs: config.taskDirs, ignorePaths: config.ignorePaths, order };
+  return { version: 1, taskDirs: config.taskDirs, ignorePaths: config.ignorePaths, order, commands: config.commands };
 }
 
 export const taskStoreUtils = {

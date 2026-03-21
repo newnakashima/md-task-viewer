@@ -10,12 +10,15 @@ import {
   deleteTask,
   listTasks,
   parseOrderPayload,
+  parseTask,
   patchTaskFields,
   readConfig,
   saveConfig,
   saveOrder,
   updateTask
 } from "./taskStore.js";
+import type { CommandStep } from "./types.js";
+import { executeCommandPipeline } from "./commandExecutor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -119,7 +122,7 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
 
   app.put("/api/config", async (request, reply) => {
     try {
-      const body = request.body as { taskDirs?: unknown; ignorePaths?: unknown } | null;
+      const body = request.body as { taskDirs?: unknown; ignorePaths?: unknown; commands?: unknown } | null;
       const taskDirs = body?.taskDirs;
       if (!Array.isArray(taskDirs) || taskDirs.some((item) => typeof item !== "string")) {
         throw new ValidationError("taskDirs must be an array of strings.");
@@ -131,8 +134,57 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
         }
         ignorePaths = body.ignorePaths as string[];
       }
-      const config = await saveConfig(options.rootDir, taskDirs as string[], ignorePaths);
+      let commands: CommandStep[] | undefined;
+      if (body?.commands !== undefined) {
+        if (!Array.isArray(body.commands)) {
+          throw new ValidationError("commands must be an array.");
+        }
+        commands = body.commands as CommandStep[];
+      }
+      const config = await saveConfig(options.rootDir, taskDirs as string[], ignorePaths, commands);
       return reply.send(config);
+    } catch (error) {
+      sendJsonError(reply, error);
+    }
+  });
+
+  app.post("/api/execute", async (request, reply) => {
+    try {
+      const body = request.body as { taskPath?: string; commands?: CommandStep[] } | null;
+      const taskPath = body?.taskPath;
+      if (!taskPath || typeof taskPath !== "string") {
+        throw new ValidationError("taskPath is required.");
+      }
+
+      let task;
+      try {
+        task = await parseTask(options.rootDir, taskPath);
+      } catch (error) {
+        const maybeError = error as NodeJS.ErrnoException;
+        if (maybeError.code === "ENOENT") {
+          return reply.code(404).send({ error: "Task not found." });
+        }
+        throw error;
+      }
+
+      // Resolve commands: request body > task extraFrontmatter > global config
+      let commands = body?.commands;
+      if (!commands || commands.length === 0) {
+        const taskCommands = task.extraFrontmatter.commands;
+        if (Array.isArray(taskCommands) && taskCommands.length > 0) {
+          commands = taskCommands as CommandStep[];
+        }
+      }
+      if (!commands || commands.length === 0) {
+        const config = await readConfig(options.rootDir);
+        commands = config.commands;
+      }
+      if (!commands || commands.length === 0) {
+        throw new ValidationError("No commands configured.");
+      }
+
+      const result = await executeCommandPipeline(options.rootDir, commands, task);
+      return reply.send(result);
     } catch (error) {
       sendJsonError(reply, error);
     }

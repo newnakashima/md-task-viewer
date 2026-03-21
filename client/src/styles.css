@@ -621,6 +621,224 @@ button {
   cursor: not-allowed;
 }
 
+/* ── Tab bar ── */
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.tab-button {
+  padding: 6px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 100ms ease, border-color 100ms ease;
+}
+
+.tab-button:hover {
+  color: var(--text);
+}
+
+.tab-button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Execute panel ── */
+
+.execute-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.execute-commands {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.execute-command-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  font-size: 0.82rem;
+}
+
+.execute-command-item .command-index {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.execute-command-item code {
+  flex: 1;
+  word-break: break-all;
+}
+
+.execute-command-item .pass-body-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  padding: 1px 4px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.execute-no-commands {
+  color: var(--muted);
+  font-size: 0.82rem;
+  padding: 14px;
+  border: 1px dashed var(--panel-border);
+}
+
+.execution-result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.execution-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.execution-result-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.execution-result-meta .exit-code-error {
+  color: var(--danger);
+}
+
+.execution-result pre {
+  flex: 1;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 80px;
+}
+
+.execution-stderr {
+  border-color: rgba(248, 81, 73, 0.3) !important;
+  color: var(--danger) !important;
+}
+
+.copy-button {
+  padding: 4px 10px !important;
+  font-size: 0.7rem !important;
+}
+
+/* ── Collapsible ── */
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.collapsible-header:hover {
+  color: var(--text);
+}
+
+.collapsible-chevron {
+  display: inline-block;
+  transition: transform 150ms ease;
+  font-size: 0.6rem;
+}
+
+.collapsible-chevron.open {
+  transform: rotate(90deg);
+}
+
+.collapsible-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+/* ── Command step row ── */
+
+.command-step-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.command-step-row input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.82rem;
+  transition: border-color 100ms ease;
+}
+
+.command-step-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.command-step-row select {
+  padding: 7px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.command-step-row select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 900px) {
