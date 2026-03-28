@@ -7,6 +7,8 @@
     "**/archived/**"
   ],
   "order": [
-    "tasks/タスクに対してコマンドを実行できる機能.md"
+    "tasks/タスクに対してコマンドを実行できる機能.md",
+    "tasks/Toggle-MARKDOWN-BODY-full-height.md",
+    "tasks/Markdown-preview.md"
   ]
 }
