@@ -382,12 +382,12 @@ button {
   gap: 8px;
 }
 
-.body-fullheight-button {
-  display: inline-flex !important;
+.editor-label-header .body-fullheight-button.ghost-button {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 6px !important;
-  font-size: 0.65rem !important;
+  padding: 1px 6px;
+  font-size: 0.65rem;
   line-height: 1;
 }
 

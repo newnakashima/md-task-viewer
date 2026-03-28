@@ -458,8 +458,9 @@ export function App(): ReactElement {
 
   useEffect(() => {
     function handleBodyFullHeightShortcut(e: KeyboardEvent): void {
-      const mod = navigator.platform.includes("Mac") ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === "h") {
+      const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (mod && e.shiftKey && e.key === "H") {
         e.preventDefault();
         setBodyFullHeight((prev) => !prev);
       }
@@ -828,17 +829,18 @@ export function App(): ReactElement {
                   <button
                     type="button"
                     className="ghost-button body-fullheight-button"
+                    aria-pressed={bodyFullHeight}
                     onClick={() => setBodyFullHeight(!bodyFullHeight)}
-                    title={`${navigator.platform.includes("Mac") ? "Cmd" : "Ctrl"}+H`}
+                    title={`${/Mac|iPhone|iPod|iPad/.test(navigator.userAgent) ? "Cmd" : "Ctrl"}+Shift+H`}
                   >
-                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
                       {bodyFullHeight ? (
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
                       ) : (
                         <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 11-2 0V6.414l-3.293 3.293a1 1 0 01-1.414-1.414L14.586 5H13a1 1 0 01-1-1zM3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
                       )}
                     </svg>
-                    {bodyFullHeight ? "Collapse" : "Expand"} ({navigator.platform.includes("Mac") ? "\u2318" : "Ctrl+"}H)
+                    {bodyFullHeight ? "Collapse" : "Expand"} ({/Mac|iPhone|iPod|iPad/.test(navigator.userAgent) ? "\u2318" : "Ctrl+"}⇧H)
                   </button>
                 </span>
                 <textarea
