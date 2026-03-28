@@ -1,9 +1,9 @@
 ---
 title: Markdown preview
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-03-28T01:57:13.635Z'
-updatedAt: '2026-03-28T05:27:52.583Z'
+updatedAt: '2026-03-28T07:57:29.952Z'
 ---
 マークダウンテキストをプレビューできるようにする。
 

@@ -17,12 +17,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { slugify } from "~/slugify";
 
 marked.setOptions({
   gfm: true,
   breaks: true,
+  async: false,
 });
 
 const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
@@ -364,6 +366,7 @@ export function App(): ReactElement {
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPosRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+  const restoreFocusRef = useRef<boolean>(false);
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -492,6 +495,9 @@ export function App(): ReactElement {
               start: textareaRef.current.selectionStart,
               end: textareaRef.current.selectionEnd,
             };
+          }
+          if (prev) {
+            restoreFocusRef.current = true;
           }
           return !prev;
         });
@@ -885,6 +891,9 @@ export function App(): ReactElement {
                           end: textareaRef.current.selectionEnd,
                         };
                       }
+                      if (showPreview) {
+                        restoreFocusRef.current = true;
+                      }
                       setShowPreview(!showPreview);
                     }}
                     title={`${isMac ? "Cmd" : "Ctrl"}+E`}
@@ -902,13 +911,14 @@ export function App(): ReactElement {
                 {showPreview ? (
                   <div
                     className="markdown-preview"
-                    dangerouslySetInnerHTML={{ __html: marked.parse(draft.content || "") as string }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(draft.content || "") as string) }}
                   />
                 ) : (
                   <textarea
                     ref={(el) => {
                       textareaRef.current = el;
-                      if (el) {
+                      if (el && restoreFocusRef.current) {
+                        restoreFocusRef.current = false;
                         const { start, end } = cursorPosRef.current;
                         el.setSelectionRange(start, end);
                         el.focus();
