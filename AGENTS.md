@@ -64,6 +64,6 @@ Configuration and ordering are stored in `.md-task-viewer.json` (version, taskDi
 
 - ESM-only (`"type": "module"` in package.json)
 - TypeScript strict mode
-- Node.js ≥18.18.0 required
+- Node.js ≥24.0.0 required
 - Custom error classes: `ValidationError`, `ConflictError` (in taskStore.ts)
 - Conflict detection uses `baseUpdatedAt` to prevent overwriting concurrent edits
