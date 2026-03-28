@@ -19,6 +19,8 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { slugify } from "~/slugify";
 
+const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
+
 type Priority = "MUST" | "WANT";
 type Status = "TODO" | "WIP" | "DONE";
 
@@ -450,6 +452,7 @@ export function App(): ReactElement {
 
     setDraft((current) => {
       if (!current || current.originalPath !== selectedTask.path) {
+        setBodyFullHeight(false);
         return draftFromTask(selectedTask);
       }
       return current;
@@ -458,7 +461,6 @@ export function App(): ReactElement {
 
   useEffect(() => {
     function handleBodyFullHeightShortcut(e: KeyboardEvent): void {
-      const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
       const mod = isMac ? e.metaKey : e.ctrlKey;
       if (mod && e.shiftKey && e.key === "H") {
         e.preventDefault();
@@ -831,7 +833,7 @@ export function App(): ReactElement {
                     className="ghost-button body-fullheight-button"
                     aria-pressed={bodyFullHeight}
                     onClick={() => setBodyFullHeight(!bodyFullHeight)}
-                    title={`${/Mac|iPhone|iPod|iPad/.test(navigator.userAgent) ? "Cmd" : "Ctrl"}+Shift+H`}
+                    title={`${isMac ? "Cmd" : "Ctrl"}+Shift+H`}
                   >
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
                       {bodyFullHeight ? (
@@ -840,7 +842,7 @@ export function App(): ReactElement {
                         <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 11-2 0V6.414l-3.293 3.293a1 1 0 01-1.414-1.414L14.586 5H13a1 1 0 01-1-1zM3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
                       )}
                     </svg>
-                    {bodyFullHeight ? "Collapse" : "Expand"} ({/Mac|iPhone|iPod|iPad/.test(navigator.userAgent) ? "\u2318" : "Ctrl+"}⇧H)
+                    {bodyFullHeight ? "Collapse" : "Expand"} ({isMac ? "\u2318" : "Ctrl+"}⇧H)
                   </button>
                 </span>
                 <textarea
