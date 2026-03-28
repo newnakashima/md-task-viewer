@@ -362,6 +362,8 @@ export function App(): ReactElement {
   const [showCommandOverride, setShowCommandOverride] = useState<boolean>(false);
   const [bodyFullHeight, setBodyFullHeight] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cursorPosRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -484,7 +486,15 @@ export function App(): ReactElement {
       const mod = isMac ? e.metaKey : e.ctrlKey;
       if (mod && e.key === "e") {
         e.preventDefault();
-        setShowPreview((prev) => !prev);
+        setShowPreview((prev) => {
+          if (!prev && textareaRef.current) {
+            cursorPosRef.current = {
+              start: textareaRef.current.selectionStart,
+              end: textareaRef.current.selectionEnd,
+            };
+          }
+          return !prev;
+        });
       }
     }
     window.addEventListener("keydown", handlePreviewShortcut);
@@ -845,7 +855,7 @@ export function App(): ReactElement {
                 </>
               ) : null}
 
-              <label className="editor-label">
+              <div className="editor-label">
                 <span className="editor-label-header">
                   <span>Markdown body</span>
                   <button
@@ -868,7 +878,15 @@ export function App(): ReactElement {
                     type="button"
                     className="ghost-button body-fullheight-button"
                     aria-pressed={showPreview}
-                    onClick={() => setShowPreview(!showPreview)}
+                    onClick={() => {
+                      if (!showPreview && textareaRef.current) {
+                        cursorPosRef.current = {
+                          start: textareaRef.current.selectionStart,
+                          end: textareaRef.current.selectionEnd,
+                        };
+                      }
+                      setShowPreview(!showPreview);
+                    }}
                     title={`${isMac ? "Cmd" : "Ctrl"}+E`}
                   >
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
@@ -888,6 +906,14 @@ export function App(): ReactElement {
                   />
                 ) : (
                   <textarea
+                    ref={(el) => {
+                      textareaRef.current = el;
+                      if (el) {
+                        const { start, end } = cursorPosRef.current;
+                        el.setSelectionRange(start, end);
+                        el.focus();
+                      }
+                    }}
                     value={draft.content}
                     onChange={(event) => setDraft({ ...draft, content: event.target.value })}
                     onKeyDown={(event) => {
@@ -977,7 +1003,7 @@ export function App(): ReactElement {
                     placeholder="# Notes"
                   />
                 )}
-              </label>
+              </div>
 
               {draft.originalPath ? (
                 <>
