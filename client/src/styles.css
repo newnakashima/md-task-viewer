@@ -391,6 +391,110 @@ button {
   line-height: 1;
 }
 
+.markdown-preview {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+.markdown-preview h1 { font-size: 1.4em; }
+.markdown-preview h2 { font-size: 1.2em; }
+.markdown-preview h3 { font-size: 1.05em; }
+
+.markdown-preview p {
+  margin: 0.5em 0;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-preview li {
+  margin: 0.25em 0;
+}
+
+.markdown-preview li > input[type="checkbox"] {
+  margin-right: 0.4em;
+  pointer-events: none;
+}
+
+.markdown-preview code {
+  background: var(--panel-border);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.markdown-preview pre {
+  background: var(--panel-border);
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.markdown-preview pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0.5em 0;
+  padding: 0.25em 0.75em;
+  color: var(--muted);
+}
+
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid var(--panel-border);
+  margin: 1em 0;
+}
+
+.markdown-preview table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  width: 100%;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid var(--panel-border);
+  padding: 0.4em 0.75em;
+  text-align: left;
+}
+
+.markdown-preview th {
+  background: var(--panel-border);
+}
+
+.markdown-preview a {
+  color: var(--accent);
+}
+
+.markdown-preview img {
+  max-width: 100%;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -911,6 +1015,11 @@ button {
   }
 
   .task-form textarea {
+    min-height: 200px;
+    flex: none;
+  }
+
+  .markdown-preview {
     min-height: 200px;
     flex: none;
   }
