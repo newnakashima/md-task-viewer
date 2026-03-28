@@ -15,7 +15,7 @@ Each Markdown file (`1 file = 1 task`) is managed through a browser UI, and all 
 
 ## Requirements
 
-- Node.js `18.18.0` or later
+- Node.js `24.0.0` or later
 
 ## Quick Start
 
