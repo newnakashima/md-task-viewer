@@ -376,6 +376,17 @@ button {
   min-height: 0;
 }
 
+.editor-label-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.body-fullheight-button {
+  padding: 2px 4px !important;
+  line-height: 1;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
