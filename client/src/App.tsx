@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import {
   closestCenter,
   DndContext,
@@ -340,6 +340,8 @@ export function App(): ReactElement {
   const [errors, setErrors] = useState<TaskError[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftTask | null>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const [notice, setNotice] = useState<string>("Loading tasks...");
   const [busy, setBusy] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -450,13 +452,11 @@ export function App(): ReactElement {
       return;
     }
 
-    setDraft((current) => {
-      if (!current || current.originalPath !== selectedTask.path) {
-        setBodyFullHeight(false);
-        return draftFromTask(selectedTask);
-      }
-      return current;
-    });
+    const current = draftRef.current;
+    if (!current || current.originalPath !== selectedTask.path) {
+      setBodyFullHeight(false);
+      setDraft(draftFromTask(selectedTask));
+    }
   }, [selectedTask]);
 
   useEffect(() => {
