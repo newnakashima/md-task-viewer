@@ -369,8 +369,8 @@ export function App(): ReactElement {
   const restoreFocusRef = useRef<boolean>(false);
 
   const previewHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(draft.content || "") as string),
-    [draft.content]
+    () => DOMPurify.sanitize(marked.parse(draft?.content || "") as string),
+    [draft?.content]
   );
 
   function togglePreview(): void {
