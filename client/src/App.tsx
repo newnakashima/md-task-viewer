@@ -368,6 +368,26 @@ export function App(): ReactElement {
   const cursorPosRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const restoreFocusRef = useRef<boolean>(false);
 
+  const previewHtml = useMemo(
+    () => DOMPurify.sanitize(marked.parse(draft.content || "") as string),
+    [draft.content]
+  );
+
+  function togglePreview(): void {
+    setShowPreview((prev) => {
+      if (!prev && textareaRef.current) {
+        cursorPosRef.current = {
+          start: textareaRef.current.selectionStart,
+          end: textareaRef.current.selectionEnd,
+        };
+      }
+      if (prev) {
+        restoreFocusRef.current = true;
+      }
+      return !prev;
+    });
+  }
+
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
     [tasks, hideDone]
@@ -489,18 +509,7 @@ export function App(): ReactElement {
       const mod = isMac ? e.metaKey : e.ctrlKey;
       if (mod && e.key === "e") {
         e.preventDefault();
-        setShowPreview((prev) => {
-          if (!prev && textareaRef.current) {
-            cursorPosRef.current = {
-              start: textareaRef.current.selectionStart,
-              end: textareaRef.current.selectionEnd,
-            };
-          }
-          if (prev) {
-            restoreFocusRef.current = true;
-          }
-          return !prev;
-        });
+        togglePreview();
       }
     }
     window.addEventListener("keydown", handlePreviewShortcut);
@@ -884,18 +893,7 @@ export function App(): ReactElement {
                     type="button"
                     className="ghost-button body-fullheight-button"
                     aria-pressed={showPreview}
-                    onClick={() => {
-                      if (!showPreview && textareaRef.current) {
-                        cursorPosRef.current = {
-                          start: textareaRef.current.selectionStart,
-                          end: textareaRef.current.selectionEnd,
-                        };
-                      }
-                      if (showPreview) {
-                        restoreFocusRef.current = true;
-                      }
-                      setShowPreview(!showPreview);
-                    }}
+                    onClick={togglePreview}
                     title={`${isMac ? "Cmd" : "Ctrl"}+E`}
                   >
                     <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
@@ -911,7 +909,7 @@ export function App(): ReactElement {
                 {showPreview ? (
                   <div
                     className="markdown-preview"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(draft.content || "") as string) }}
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
                   />
                 ) : (
                   <textarea
