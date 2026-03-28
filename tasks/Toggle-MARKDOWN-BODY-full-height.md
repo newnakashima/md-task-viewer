@@ -1,9 +1,9 @@
 ---
 title: Toggle MARKDOWN BODY full height
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-03-28T01:54:41.102Z'
-updatedAt: '2026-03-28T01:54:41.102Z'
+updatedAt: '2026-03-28T02:14:13.691Z'
 ---
 MORKDOWN BODY の領域を、縦サイズを最大化できるようにする。ボタンで切り替えられるようにする。
 

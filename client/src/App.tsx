@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import {
   closestCenter,
   DndContext,
@@ -18,6 +18,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { slugify } from "~/slugify";
+
+const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
 
 type Priority = "MUST" | "WANT";
 type Status = "TODO" | "WIP" | "DONE";
@@ -338,6 +340,8 @@ export function App(): ReactElement {
   const [errors, setErrors] = useState<TaskError[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftTask | null>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const [notice, setNotice] = useState<string>("Loading tasks...");
   const [busy, setBusy] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -350,6 +354,7 @@ export function App(): ReactElement {
   const [executionResult, setExecutionResult] = useState<CommandExecutionResult | null>(null);
   const [executing, setExecuting] = useState<boolean>(false);
   const [showCommandOverride, setShowCommandOverride] = useState<boolean>(false);
+  const [bodyFullHeight, setBodyFullHeight] = useState<boolean>(false);
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -447,13 +452,24 @@ export function App(): ReactElement {
       return;
     }
 
-    setDraft((current) => {
-      if (!current || current.originalPath !== selectedTask.path) {
-        return draftFromTask(selectedTask);
-      }
-      return current;
-    });
+    const current = draftRef.current;
+    if (!current || current.originalPath !== selectedTask.path) {
+      setBodyFullHeight(false);
+      setDraft(draftFromTask(selectedTask));
+    }
   }, [selectedTask]);
+
+  useEffect(() => {
+    function handleBodyFullHeightShortcut(e: KeyboardEvent): void {
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (mod && e.shiftKey && e.key === "H") {
+        e.preventDefault();
+        setBodyFullHeight((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleBodyFullHeightShortcut);
+    return () => window.removeEventListener("keydown", handleBodyFullHeightShortcut);
+  }, []);
 
   useEffect(() => {
     const source = new EventSource("/api/events");
@@ -730,83 +746,105 @@ export function App(): ReactElement {
 
           {draft && activeTab === "detail" ? (
             <div className="task-form">
-              <div className="field-row field-row-top">
-                <label>
-                  <span>Priority</span>
-                  <select
-                    value={draft.priority}
-                    onChange={(event) => {
-                      const value = event.target.value as Priority;
-                      setDraft({ ...draft, priority: value });
-                      if (draft.originalPath) {
-                        void patchField("priority", value);
-                      }
-                    }}
-                  >
-                    <option value="MUST">MUST</option>
-                    <option value="WANT">WANT</option>
-                  </select>
-                </label>
+              {!bodyFullHeight ? (
+                <>
+                  <div className="field-row field-row-top">
+                    <label>
+                      <span>Priority</span>
+                      <select
+                        value={draft.priority}
+                        onChange={(event) => {
+                          const value = event.target.value as Priority;
+                          setDraft({ ...draft, priority: value });
+                          if (draft.originalPath) {
+                            void patchField("priority", value);
+                          }
+                        }}
+                      >
+                        <option value="MUST">MUST</option>
+                        <option value="WANT">WANT</option>
+                      </select>
+                    </label>
 
-                <label>
-                  <span>Status</span>
-                  <select
-                    value={draft.status}
-                    onChange={(event) => {
-                      const value = event.target.value as Status;
-                      setDraft({ ...draft, status: value });
-                      if (draft.originalPath) {
-                        void patchField("status", value);
-                      }
-                    }}
-                  >
-                    <option value="TODO">TODO</option>
-                    <option value="WIP">WIP</option>
-                    <option value="DONE">DONE</option>
-                  </select>
-                </label>
-              </div>
+                    <label>
+                      <span>Status</span>
+                      <select
+                        value={draft.status}
+                        onChange={(event) => {
+                          const value = event.target.value as Status;
+                          setDraft({ ...draft, status: value });
+                          if (draft.originalPath) {
+                            void patchField("status", value);
+                          }
+                        }}
+                      >
+                        <option value="TODO">TODO</option>
+                        <option value="WIP">WIP</option>
+                        <option value="DONE">DONE</option>
+                      </select>
+                    </label>
+                  </div>
 
-              <label>
-                <span>Title</span>
-                <input
-                  value={draft.title}
-                  onChange={(event) => {
-                    const newTitle = event.target.value;
-                    const updates: Partial<DraftTask> = { title: newTitle };
-                    if (!pathManuallyEdited && draft.originalPath === null) {
-                      const dir = taskDirs[0] || "";
-                      const dirPath = dir ? `${dir}/` : "";
-                      updates.path = newTitle.trim()
-                        ? `${dirPath}${slugify(newTitle)}.md`
-                        : dirPath;
-                    }
-                    setDraft({ ...draft, ...updates });
-                  }}
-                  placeholder="Write release notes"
-                  required
-                />
-              </label>
+                  <label>
+                    <span>Title</span>
+                    <input
+                      value={draft.title}
+                      onChange={(event) => {
+                        const newTitle = event.target.value;
+                        const updates: Partial<DraftTask> = { title: newTitle };
+                        if (!pathManuallyEdited && draft.originalPath === null) {
+                          const dir = taskDirs[0] || "";
+                          const dirPath = dir ? `${dir}/` : "";
+                          updates.path = newTitle.trim()
+                            ? `${dirPath}${slugify(newTitle)}.md`
+                            : dirPath;
+                        }
+                        setDraft({ ...draft, ...updates });
+                      }}
+                      placeholder="Write release notes"
+                      required
+                    />
+                  </label>
 
-              <label>
-                <span>Relative path</span>
-                <input
-                  value={draft.path}
-                  onChange={(event) => {
-                    setPathManuallyEdited(true);
-                    setDraft({ ...draft, path: event.target.value });
-                  }}
-                  placeholder="planning/release-notes.md"
-                />
-              </label>
+                  <label>
+                    <span>Relative path</span>
+                    <input
+                      value={draft.path}
+                      onChange={(event) => {
+                        setPathManuallyEdited(true);
+                        setDraft({ ...draft, path: event.target.value });
+                      }}
+                      placeholder="planning/release-notes.md"
+                    />
+                  </label>
 
-              <div className="meta-strip">
-                <span>Created {formatDate(draft.createdAt)}</span>
-                <span>Updated {formatDate(draft.updatedAt)}</span>
-              </div>
+                  <div className="meta-strip">
+                    <span>Created {formatDate(draft.createdAt)}</span>
+                    <span>Updated {formatDate(draft.updatedAt)}</span>
+                  </div>
+                </>
+              ) : null}
 
               <label className="editor-label">
-                <span>Markdown body</span>
+                <span className="editor-label-header">
+                  <span>Markdown body</span>
+                  <button
+                    type="button"
+                    className="ghost-button body-fullheight-button"
+                    aria-pressed={bodyFullHeight}
+                    onClick={() => setBodyFullHeight(!bodyFullHeight)}
+                    title={`${isMac ? "Cmd" : "Ctrl"}+Shift+H`}
+                  >
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                      {bodyFullHeight ? (
+                        <path fillRule="evenodd" d="M3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
+                      ) : (
+                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 11-2 0V6.414l-3.293 3.293a1 1 0 01-1.414-1.414L14.586 5H13a1 1 0 01-1-1zM3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
+                      )}
+                    </svg>
+                    {bodyFullHeight ? "Collapse" : "Expand"} ({isMac ? "\u2318" : "Ctrl+"}⇧H)
+                  </button>
+                </span>
                 <textarea
                   value={draft.content}
                   onChange={(event) => setDraft({ ...draft, content: event.target.value })}
