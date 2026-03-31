@@ -221,11 +221,31 @@ async function reconcileOrder(rootDir: string, taskPaths: string[]): Promise<{ o
   const order = config.order;
 
   const known = new Set(taskPaths);
-  const nextOrder = order.filter((item) => known.has(item));
-  for (const taskPath of taskPaths) {
-    if (!nextOrder.includes(taskPath)) {
-      nextOrder.push(taskPath);
+  const orderSet = new Set(order);
+
+  const newItems = taskPaths.filter((p) => !orderSet.has(p));
+  const removedCount = order.reduce((count, item) => (known.has(item) ? count : count + 1), 0);
+  const canReplace = newItems.length > 0 && newItems.length === removedCount;
+
+  // Build next order:
+  // - Always keep existing items in their original relative positions.
+  // - Only replace removed slots with new items when the number of removed
+  //   items exactly matches the number of new items (rename-like scenario).
+  // - Otherwise, skip removed items and append all new items at the end to
+  //   avoid unexpected reordering.
+  const nextOrder: string[] = [];
+  let newItemCursor = 0;
+  for (let i = 0; i < order.length; i++) {
+    if (known.has(order[i])) {
+      nextOrder.push(order[i]);
+    } else if (canReplace && newItemCursor < newItems.length) {
+      nextOrder.push(newItems[newItemCursor++]);
     }
+    // else: removed item with no replacement — skip
+  }
+  // Append any remaining new items (all of them when we are not in a replace scenario)
+  while (newItemCursor < newItems.length) {
+    nextOrder.push(newItems[newItemCursor++]);
   }
 
   const changed = nextOrder.length !== order.length || nextOrder.some((item, index) => item !== order[index]);
@@ -432,9 +452,22 @@ export async function updateTask(rootDir: string, currentPath: string, input: Up
     await fs.rename(absoluteCurrentPath, absoluteNextPath);
   }
 
-  const current = await listTasks(rootDir);
-  const updatedOrder = current.tasks.map((task) => task.path);
-  await saveOrder(rootDir, updatedOrder);
+  if (nextPath !== normalizedCurrentPath) {
+    const config = await readConfig(rootDir);
+    const filteredOrder = config.order.filter((item) => item !== nextPath);
+    const index = filteredOrder.indexOf(normalizedCurrentPath);
+
+    let updatedOrder: string[];
+    if (index === -1) {
+      // If the old path is not present, just append the new path.
+      updatedOrder = [...filteredOrder, nextPath];
+    } else {
+      // Replace the old path with the new path at the same position.
+      updatedOrder = [...filteredOrder];
+      updatedOrder[index] = nextPath;
+    }
+    await saveOrder(rootDir, updatedOrder);
+  }
   return parseTask(rootDir, nextPath);
 }
 
