@@ -10,6 +10,7 @@
     "tasks/タスクに対してコマンドを実行できる機能.md",
     "tasks/Toggle-MARKDOWN-BODY-full-height.md",
     "tasks/Markdown-preview.md",
-    "tasks/version-up-nodejs.md"
+    "tasks/version-up-nodejs.md",
+    "tasks/keep-order-when-a-file-is-renamed.md"
   ]
 }
