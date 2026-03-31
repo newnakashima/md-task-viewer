@@ -7,7 +7,8 @@ import {
   parseTask,
   saveOrder,
   serializeTask,
-  taskStoreUtils
+  taskStoreUtils,
+  updateTask
 } from "../src/taskStore.js";
 import type { TaskRecord } from "../src/types.js";
 
@@ -70,6 +71,48 @@ describe("taskStore", () => {
 
     const orderFile = await readFile(path.join(rootDir, ".md-task-viewer.json"), "utf8");
     expect(orderFile).toContain('"order": [\n    "beta.md",\n    "alpha.md"\n  ]');
+  });
+
+  it("preserves order when a file is renamed via updateTask", async () => {
+    const rootDir = await createTempDir();
+    const taskContent = (title: string) =>
+      `---\ntitle: ${title}\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\n`;
+    await writeFile(path.join(rootDir, "alpha.md"), taskContent("Alpha"), "utf8");
+    await writeFile(path.join(rootDir, "beta.md"), taskContent("Beta"), "utf8");
+    await writeFile(path.join(rootDir, "gamma.md"), taskContent("Gamma"), "utf8");
+    await saveOrder(rootDir, ["alpha.md", "beta.md", "gamma.md"]);
+
+    // Rename beta.md -> beta-renamed.md via updateTask
+    await updateTask(rootDir, "beta.md", {
+      title: "Beta",
+      priority: "MUST",
+      status: "TODO",
+      content: "",
+      path: "beta-renamed.md"
+    });
+
+    const payload = await listTasks(rootDir);
+    const paths = payload.tasks.map((task) => task.path);
+    expect(paths).toEqual(["alpha.md", "beta-renamed.md", "gamma.md"]);
+  });
+
+  it("preserves order when reconciling after a filesystem rename", async () => {
+    const rootDir = await createTempDir();
+    const taskContent = (title: string) =>
+      `---\ntitle: ${title}\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\n`;
+    await writeFile(path.join(rootDir, "alpha.md"), taskContent("Alpha"), "utf8");
+    await writeFile(path.join(rootDir, "beta.md"), taskContent("Beta"), "utf8");
+    await writeFile(path.join(rootDir, "gamma.md"), taskContent("Gamma"), "utf8");
+    await saveOrder(rootDir, ["alpha.md", "beta.md", "gamma.md"]);
+
+    // Simulate filesystem rename: delete beta.md and create beta-new.md
+    const { rename } = await import("node:fs/promises");
+    await rename(path.join(rootDir, "beta.md"), path.join(rootDir, "beta-new.md"));
+
+    // listTasks should place the new file at beta's old position
+    const payload = await listTasks(rootDir);
+    const paths = payload.tasks.map((task) => task.path);
+    expect(paths).toEqual(["alpha.md", "beta-new.md", "gamma.md"]);
   });
 
   it("fills defaults for missing required keys", async () => {
