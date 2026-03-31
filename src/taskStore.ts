@@ -454,9 +454,17 @@ export async function updateTask(rootDir: string, currentPath: string, input: Up
 
   if (nextPath !== normalizedCurrentPath) {
     const config = await readConfig(rootDir);
-    const updatedOrder = config.order.map((item) => item === normalizedCurrentPath ? nextPath : item);
-    if (!updatedOrder.includes(nextPath)) {
-      updatedOrder.push(nextPath);
+    const filteredOrder = config.order.filter((item) => item !== nextPath);
+    const index = filteredOrder.indexOf(normalizedCurrentPath);
+
+    let updatedOrder: string[];
+    if (index === -1) {
+      // If the old path is not present, just append the new path.
+      updatedOrder = [...filteredOrder, nextPath];
+    } else {
+      // Replace the old path with the new path at the same position.
+      updatedOrder = [...filteredOrder];
+      updatedOrder[index] = nextPath;
     }
     await saveOrder(rootDir, updatedOrder);
   }
