@@ -105,7 +105,7 @@ describe("taskStore", () => {
     await writeFile(path.join(rootDir, "gamma.md"), taskContent("Gamma"), "utf8");
     await saveOrder(rootDir, ["alpha.md", "beta.md", "gamma.md"]);
 
-    // Simulate filesystem rename: delete beta.md and create beta-new.md
+    // Simulate filesystem atomic rename: move beta.md to beta-new.md
     const { rename } = await import("node:fs/promises");
     await rename(path.join(rootDir, "beta.md"), path.join(rootDir, "beta-new.md"));
 
