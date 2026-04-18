@@ -497,14 +497,22 @@ export function App(): ReactElement {
     if (!current || current.originalPath !== selectedTask.path) {
       setBodyFullHeight(false);
       setShowPreview(false);
-      editorScrollRef.current = 0;
-      previewScrollRef.current = 0;
       setDraft(draftFromTask(selectedTask));
-      requestAnimationFrame(() => {
-        document.querySelector("textarea")?.scrollTo({ top: 0 });
-      });
     }
   }, [selectedTask]);
+
+  useEffect(() => {
+    editorScrollRef.current = 0;
+    previewScrollRef.current = 0;
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.scrollTop = 0;
+      }
+      if (previewRef.current) {
+        previewRef.current.scrollTop = 0;
+      }
+    });
+  }, [selectedPath]);
 
   useEffect(() => {
     function handleBodyFullHeightShortcut(e: KeyboardEvent): void {
