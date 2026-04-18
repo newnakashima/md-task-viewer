@@ -500,6 +500,9 @@ export function App(): ReactElement {
       editorScrollRef.current = 0;
       previewScrollRef.current = 0;
       setDraft(draftFromTask(selectedTask));
+      requestAnimationFrame(() => {
+        document.querySelector("textarea")?.scrollTo({ top: 0 });
+      });
     }
   }, [selectedTask]);
 
