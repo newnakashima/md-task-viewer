@@ -365,8 +365,13 @@ export function App(): ReactElement {
   const [bodyFullHeight, setBodyFullHeight] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const cursorPosRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const restoreFocusRef = useRef<boolean>(false);
+  const editorScrollRef = useRef<number>(0);
+  const previewScrollRef = useRef<number>(0);
+  const restoreEditorScrollRef = useRef<boolean>(false);
+  const restorePreviewScrollRef = useRef<boolean>(false);
 
   const previewHtml = useMemo(
     () => DOMPurify.sanitize(marked.parse(draft?.content || "") as string),
@@ -380,9 +385,13 @@ export function App(): ReactElement {
           start: textareaRef.current.selectionStart,
           end: textareaRef.current.selectionEnd,
         };
+        editorScrollRef.current = textareaRef.current.scrollTop;
+        restorePreviewScrollRef.current = true;
       }
-      if (prev) {
+      if (prev && previewRef.current) {
+        previewScrollRef.current = previewRef.current.scrollTop;
         restoreFocusRef.current = true;
+        restoreEditorScrollRef.current = true;
       }
       return !prev;
     });
@@ -488,6 +497,8 @@ export function App(): ReactElement {
     if (!current || current.originalPath !== selectedTask.path) {
       setBodyFullHeight(false);
       setShowPreview(false);
+      editorScrollRef.current = 0;
+      previewScrollRef.current = 0;
       setDraft(draftFromTask(selectedTask));
     }
   }, [selectedTask]);
@@ -908,6 +919,13 @@ export function App(): ReactElement {
                 </span>
                 {showPreview ? (
                   <div
+                    ref={(el) => {
+                      previewRef.current = el;
+                      if (el && restorePreviewScrollRef.current) {
+                        restorePreviewScrollRef.current = false;
+                        el.scrollTop = previewScrollRef.current;
+                      }
+                    }}
                     className="markdown-preview"
                     dangerouslySetInnerHTML={{ __html: previewHtml }}
                   />
@@ -915,11 +933,17 @@ export function App(): ReactElement {
                   <textarea
                     ref={(el) => {
                       textareaRef.current = el;
-                      if (el && restoreFocusRef.current) {
-                        restoreFocusRef.current = false;
-                        const { start, end } = cursorPosRef.current;
-                        el.setSelectionRange(start, end);
-                        el.focus();
+                      if (el) {
+                        if (restoreFocusRef.current) {
+                          restoreFocusRef.current = false;
+                          const { start, end } = cursorPosRef.current;
+                          el.setSelectionRange(start, end);
+                          el.focus();
+                        }
+                        if (restoreEditorScrollRef.current) {
+                          restoreEditorScrollRef.current = false;
+                          el.scrollTop = editorScrollRef.current;
+                        }
                       }
                     }}
                     value={draft.content}
