@@ -350,7 +350,13 @@ export function App(): ReactElement {
   const [draft, setDraft] = useState<DraftTask | null>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const [notice, setNotice] = useState<string>("Loading tasks...");
+  const [notice, setNoticeState] = useState<{ message: string; tone: "info" | "success" | "error" }>({
+    message: "Loading tasks...",
+    tone: "info"
+  });
+  const setNotice = (message: string, tone: "info" | "success" | "error" = "info"): void => {
+    setNoticeState({ message, tone });
+  };
   const [busy, setBusy] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [taskDirs, setTaskDirs] = useState<string[]>(["."]);
@@ -462,10 +468,10 @@ export function App(): ReactElement {
       setTaskDirs(config.taskDirs);
       setIgnorePaths(config.ignorePaths ?? []);
       setGlobalCommands(config.commands ?? []);
-      setNotice("Settings saved.");
+      setNotice("Settings saved.", "success");
       await loadTasks();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Failed to save settings.");
+      setNotice(error instanceof Error ? error.message : "Failed to save settings.", "error");
     } finally {
       setBusy(false);
     }
@@ -573,7 +579,7 @@ export function App(): ReactElement {
         await loadTasks();
         setSelectedPath(updated.path);
         setDraft(draftFromTask(updated));
-        setNotice("Task saved.");
+        setNotice("Task saved.", "success");
       } else {
         const created = await requestJson<TaskRecord>("/api/tasks", {
           method: "POST",
@@ -589,10 +595,10 @@ export function App(): ReactElement {
         await loadTasks();
         setSelectedPath(created.path);
         setDraft(draftFromTask(created));
-        setNotice("Task created.");
+        setNotice("Task created.", "success");
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Failed to save task.");
+      setNotice(error instanceof Error ? error.message : "Failed to save task.", "error");
     } finally {
       setBusy(false);
     }
@@ -611,9 +617,9 @@ export function App(): ReactElement {
       });
       setDraft(null);
       await loadTasks();
-      setNotice("Task deleted.");
+      setNotice("Task deleted.", "success");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Failed to delete task.");
+      setNotice(error instanceof Error ? error.message : "Failed to delete task.", "error");
     } finally {
       setBusy(false);
     }
@@ -635,9 +641,9 @@ export function App(): ReactElement {
         method: "PUT",
         body: JSON.stringify({ order: next.map((task) => task.path) })
       });
-      setNotice("Task order updated.");
+      setNotice("Task order updated.", "success");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Failed to save order.");
+      setNotice(error instanceof Error ? error.message : "Failed to save order.", "error");
       await loadTasks();
     }
   }
@@ -658,7 +664,7 @@ export function App(): ReactElement {
       setSelectedPath(updated.path);
       setDraft((current) => current ? { ...current, [field]: value, updatedAt: updated.frontmatter.updatedAt } : current);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : `Failed to update ${field}.`);
+      setNotice(error instanceof Error ? error.message : `Failed to update ${field}.`, "error");
     }
   }
 
@@ -1108,7 +1114,10 @@ export function App(): ReactElement {
                 )}
               </div>
 
-              <p className="notice">{notice}</p>
+              <p className={`notice notice--${notice.tone}`} role={notice.tone === "error" ? "alert" : undefined}>
+                {notice.tone === "error" && notice.message ? <span className="notice-icon" aria-hidden="true">!</span> : null}
+                {notice.message}
+              </p>
             </div>
           ) : draft && activeTab === "execute" ? (
             <div className="execute-panel">
@@ -1167,7 +1176,7 @@ export function App(): ReactElement {
                       className="ghost-button copy-button"
                       onClick={() => {
                         void navigator.clipboard.writeText(executionResult.stdout);
-                        setNotice("Copied to clipboard.");
+                        setNotice("Copied to clipboard.", "success");
                       }}
                     >
                       Copy
@@ -1177,7 +1186,10 @@ export function App(): ReactElement {
                   {executionResult.stderr ? (
                     <pre className="execution-stderr">{executionResult.stderr}</pre>
                   ) : null}
-                  <p className="notice">{notice}</p>
+                  <p className={`notice notice--${notice.tone}`} role={notice.tone === "error" ? "alert" : undefined}>
+                {notice.tone === "error" && notice.message ? <span className="notice-icon" aria-hidden="true">!</span> : null}
+                {notice.message}
+              </p>
                 </div>
               ) : null}
             </div>
