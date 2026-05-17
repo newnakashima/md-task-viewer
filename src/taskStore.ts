@@ -356,17 +356,18 @@ export async function createTask(rootDir: string, input: CreateTaskInput): Promi
     : await nextAvailablePath(rootDir, input.directory ?? "", input.title);
   const absolutePath = path.join(rootDir, relativePath);
 
+  let targetExists = false;
   try {
     await fs.access(absolutePath);
+    targetExists = true;
   } catch (error) {
     const maybeError = error as NodeJS.ErrnoException;
-    if (maybeError.code === "ENOENT") {
-      // The target path is available.
-    } else if (maybeError.code) {
+    if (maybeError.code !== "ENOENT") {
       throw error;
-    } else {
-      throw new ValidationError("A task already exists at that path.");
     }
+  }
+  if (targetExists) {
+    throw new ValidationError("A task already exists at that path.");
   }
 
   const record: TaskRecord = {
@@ -418,17 +419,18 @@ export async function updateTask(rootDir: string, currentPath: string, input: Up
   const absoluteNextPath = path.join(rootDir, nextPath);
 
   if (nextPath !== normalizedCurrentPath) {
+    let targetExists = false;
     try {
       await fs.access(absoluteNextPath);
+      targetExists = true;
     } catch (error) {
       const maybeError = error as NodeJS.ErrnoException;
-      if (maybeError.code === "ENOENT") {
-        // The target path is available.
-      } else if (maybeError.code) {
+      if (maybeError.code !== "ENOENT") {
         throw error;
-      } else {
-        throw new ValidationError("A task already exists at the target path.");
       }
+    }
+    if (targetExists) {
+      throw new ValidationError("A task already exists at the target path.");
     }
   }
 

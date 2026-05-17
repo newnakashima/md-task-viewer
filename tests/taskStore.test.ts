@@ -132,6 +132,45 @@ describe("taskStore", () => {
     expect(paths).toEqual(["Gamma.md", "alpha.md", "beta.md"]);
   });
 
+  it("rejects createTask when a file already exists at the target path", async () => {
+    const rootDir = await createTempDir();
+    await writeFile(
+      path.join(rootDir, "duplicate.md"),
+      "---\ntitle: Existing\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nKeep me\n",
+      "utf8"
+    );
+
+    await expect(
+      createTask(rootDir, { title: "Anything", path: "duplicate.md" })
+    ).rejects.toThrow(/already exists/);
+
+    const onDisk = await readFile(path.join(rootDir, "duplicate.md"), "utf8");
+    expect(onDisk).toContain("title: Existing");
+    expect(onDisk).toContain("Keep me");
+  });
+
+  it("rejects updateTask rename when a file already exists at the target path", async () => {
+    const rootDir = await createTempDir();
+    const taskContent = (title: string) =>
+      `---\ntitle: ${title}\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\n`;
+    await writeFile(path.join(rootDir, "alpha.md"), taskContent("Alpha"), "utf8");
+    await writeFile(path.join(rootDir, "beta.md"), `${taskContent("Beta")}Beta body\n`, "utf8");
+
+    await expect(
+      updateTask(rootDir, "alpha.md", {
+        title: "Alpha",
+        priority: "MUST",
+        status: "TODO",
+        content: "",
+        path: "beta.md"
+      })
+    ).rejects.toThrow(/already exists/);
+
+    const beta = await readFile(path.join(rootDir, "beta.md"), "utf8");
+    expect(beta).toContain("title: Beta");
+    expect(beta).toContain("Beta body");
+  });
+
   it("fills defaults for missing required keys", async () => {
     const rootDir = await createTempDir();
     await writeFile(path.join(rootDir, "ideas.md"), "---\nowner: alice\n---\nBrainstorm", "utf8");

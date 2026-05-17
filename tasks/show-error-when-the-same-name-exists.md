@@ -1,7 +1,7 @@
 ---
 title: 同名ファイルがあったらエラーを出す
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-05-17T07:37:14.079Z'
 updatedAt: '2026-05-17T07:37:14.079Z'
 ---
