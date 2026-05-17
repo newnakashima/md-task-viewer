@@ -56,9 +56,29 @@ async function main(): Promise<void> {
     await open(browserUrl);
   }
 
-  const shutdown = async (): Promise<void> => {
-    await app.close();
-    process.exit(0);
+  let shuttingDown = false;
+  const SHUTDOWN_TIMEOUT_MS = 5000;
+
+  const shutdown = (signal: NodeJS.Signals): void => {
+    if (shuttingDown) {
+      process.stderr.write(`\nReceived ${signal} again — forcing exit.\n`);
+      process.exit(1);
+    }
+    shuttingDown = true;
+
+    const timer = setTimeout(() => {
+      process.stderr.write(`\nGraceful shutdown timed out after ${SHUTDOWN_TIMEOUT_MS}ms — forcing exit.\n`);
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    timer.unref();
+
+    app.close().then(
+      () => process.exit(0),
+      (error) => {
+        process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+        process.exit(1);
+      }
+    );
   };
 
   process.on("SIGINT", shutdown);
