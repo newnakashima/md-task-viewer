@@ -387,8 +387,9 @@ export async function createTask(rootDir: string, input: CreateTaskInput): Promi
   await fs.mkdir(path.dirname(absolutePath), { recursive: true });
   await fs.writeFile(absolutePath, serializeTask(record), "utf8");
 
-  const current = await listTasks(rootDir);
-  await saveOrder(rootDir, current.tasks.map((task) => task.path).concat(relativePath));
+  const config = await readConfig(rootDir);
+  const filteredOrder = config.order.filter((item) => item !== relativePath);
+  await saveOrder(rootDir, [relativePath, ...filteredOrder]);
   return parseTask(rootDir, relativePath);
 }
 

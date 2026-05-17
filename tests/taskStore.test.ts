@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  createTask,
   listTasks,
   parseTask,
   saveOrder,
@@ -113,6 +114,22 @@ describe("taskStore", () => {
     const payload = await listTasks(rootDir);
     const paths = payload.tasks.map((task) => task.path);
     expect(paths).toEqual(["alpha.md", "beta-new.md", "gamma.md"]);
+  });
+
+  it("prepends newly created tasks to the order", async () => {
+    const rootDir = await createTempDir();
+    const taskContent = (title: string) =>
+      `---\ntitle: ${title}\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\n`;
+    await writeFile(path.join(rootDir, "alpha.md"), taskContent("Alpha"), "utf8");
+    await writeFile(path.join(rootDir, "beta.md"), taskContent("Beta"), "utf8");
+    await saveOrder(rootDir, ["alpha.md", "beta.md"]);
+
+    await createTask(rootDir, { title: "Gamma" });
+
+    const payload = await listTasks(rootDir);
+    const paths = payload.tasks.map((task) => task.path);
+    expect(paths[0]).toBe("Gamma.md");
+    expect(paths).toEqual(["Gamma.md", "alpha.md", "beta.md"]);
   });
 
   it("fills defaults for missing required keys", async () => {
