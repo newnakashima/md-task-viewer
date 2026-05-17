@@ -51,7 +51,7 @@ function sendJsonError(reply: { code: (statusCode: number) => { send: (payload: 
 }
 
 export async function createServer(options: CreateServerOptions): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, forceCloseConnections: true });
   const listeners = new Set<{ send: (payload: string) => void; close: () => void }>();
   const clientDir = resolveClientDir(options.clientDir);
 
