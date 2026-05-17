@@ -7,8 +7,8 @@
     "**/archived/**"
   ],
   "order": [
-    "tasks/test-taska.md",
-    "tasks/test-task.md",
+    "tasks/RELATIVE-PATH-をクリップボードにコピーするボタン.md",
+    "tasks/肥大化したファイルを分割するリファクタ.md",
     "tasks/CTRLC-で止めるとターミナルが固まる.md",
     "tasks/show-error-when-the-same-name-exists.md",
     "tasks/タスクに対してコマンドを実行できる機能.md",
