@@ -23,7 +23,7 @@ test("creates, edits, deletes, reorders, and refreshes tasks", async ({ page }) 
 
   try {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Local tasks, direct file control." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Markdown Task Viewer" })).toBeVisible();
 
     await page.getByRole("button", { name: "New Task" }).click();
     await page.getByLabel("Title").fill("Gamma");
