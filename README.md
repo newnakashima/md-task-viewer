@@ -68,6 +68,8 @@ Unknown frontmatter keys are preserved as-is.
 
 Files missing required keys are displayed with default values and normalized on save.
 
+Legacy `status: WIP` is treated as `TODO` when loaded and will be replaced with `TODO` on save.
+
 Files with unparseable YAML frontmatter are excluded from the list and shown in the error panel.
 
 ## Ordering Metadata

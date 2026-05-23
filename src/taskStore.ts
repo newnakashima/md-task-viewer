@@ -25,6 +25,13 @@ const REQUIRED_STATUS: TaskStatus[] = ["TODO", "DONE"];
 export class ConflictError extends Error {}
 export class ValidationError extends Error {}
 
+function ensureRequiredStatus(status: string): TaskStatus {
+  if (!REQUIRED_STATUS.includes(status as TaskStatus)) {
+    throw new ValidationError("Status must be TODO or DONE.");
+  }
+  return status as TaskStatus;
+}
+
 function toPosixPath(filePath: string): string {
   return filePath.split(path.sep).join("/");
 }
@@ -349,6 +356,7 @@ export async function createTask(rootDir: string, input: CreateTaskInput): Promi
   if (!input.title.trim()) {
     throw new ValidationError("Title is required.");
   }
+  const status = input.status !== undefined ? ensureRequiredStatus(input.status) : "TODO";
 
   const now = asUtcISOString(new Date());
   const relativePath = input.path?.trim()
@@ -379,7 +387,7 @@ export async function createTask(rootDir: string, input: CreateTaskInput): Promi
     frontmatter: {
       title: input.title.trim(),
       priority: input.priority ?? "MUST",
-      status: input.status ?? "TODO",
+      status,
       createdAt: now,
       updatedAt: now
     }
@@ -412,6 +420,7 @@ export async function updateTask(rootDir: string, currentPath: string, input: Up
   if (input.baseUpdatedAt && existing.frontmatter.updatedAt !== input.baseUpdatedAt) {
     throw new ConflictError("The task changed on disk. Reload before saving.");
   }
+  const status = ensureRequiredStatus(input.status);
 
   const nextPath = input.path?.trim()
     ? await ensureDirectoryForFile(rootDir, input.path)
@@ -443,7 +452,7 @@ export async function updateTask(rootDir: string, currentPath: string, input: Up
     frontmatter: {
       title: input.title.trim(),
       priority: input.priority,
-      status: input.status,
+      status,
       createdAt: existing.frontmatter.createdAt,
       updatedAt: asUtcISOString(new Date())
     }
