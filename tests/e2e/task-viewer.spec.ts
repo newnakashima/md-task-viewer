@@ -56,7 +56,7 @@ test("creates, edits, deletes, reorders, and refreshes tasks", async ({ page }) 
     await page.mouse.move(alphaBox.x + alphaBox.width / 2, alphaBox.y + 8, { steps: 20 });
     await page.mouse.up();
 
-    const taskButtons = page.locator(".task-list > button");
+    const taskButtons = page.locator(".task-list > .task-row");
     await expect(taskButtons.first()).toContainText("Beta");
 
     await writeFile(
