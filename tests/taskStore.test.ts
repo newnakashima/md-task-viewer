@@ -36,7 +36,7 @@ describe("taskStore", () => {
       frontmatter: {
         title: "Task",
         priority: "MUST",
-        status: "WIP",
+        status: "TODO",
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-02T00:00:00.000Z"
       }
@@ -149,6 +149,14 @@ describe("taskStore", () => {
     expect(onDisk).toContain("Keep me");
   });
 
+  it("rejects createTask when status is invalid", async () => {
+    const rootDir = await createTempDir();
+
+    await expect(
+      createTask(rootDir, { title: "Invalid status", status: "WIP" as never })
+    ).rejects.toThrow(/Status must be TODO or DONE/);
+  });
+
   it("rejects updateTask rename when a file already exists at the target path", async () => {
     const rootDir = await createTempDir();
     const taskContent = (title: string) =>
@@ -169,6 +177,24 @@ describe("taskStore", () => {
     const beta = await readFile(path.join(rootDir, "beta.md"), "utf8");
     expect(beta).toContain("title: Beta");
     expect(beta).toContain("Beta body");
+  });
+
+  it("rejects updateTask when status is invalid", async () => {
+    const rootDir = await createTempDir();
+    await writeFile(
+      path.join(rootDir, "alpha.md"),
+      "---\ntitle: Alpha\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\n",
+      "utf8"
+    );
+
+    await expect(
+      updateTask(rootDir, "alpha.md", {
+        title: "Alpha",
+        priority: "MUST",
+        status: "WIP" as never,
+        content: ""
+      })
+    ).rejects.toThrow(/Status must be TODO or DONE/);
   });
 
   it("fills defaults for missing required keys", async () => {

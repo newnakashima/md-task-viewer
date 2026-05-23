@@ -30,7 +30,7 @@ marked.setOptions({
 const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
 
 type Priority = "MUST" | "WANT";
-type Status = "TODO" | "WIP" | "DONE";
+type Status = "TODO" | "DONE";
 
 interface CommandStep {
   command: string;
@@ -905,7 +905,6 @@ export function App(): ReactElement {
                         }}
                       >
                         <option value="TODO">TODO</option>
-                        <option value="WIP">WIP</option>
                         <option value="DONE">DONE</option>
                       </select>
                     </label>

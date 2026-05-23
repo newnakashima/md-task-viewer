@@ -1,7 +1,7 @@
 ---
 title: WIPステータスの削除
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-05-23T07:42:45.623Z'
 updatedAt: '2026-05-23T07:42:45.623Z'
 ---

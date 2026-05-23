@@ -8,7 +8,7 @@ Each Markdown file (`1 file = 1 task`) is managed through a browser UI, and all 
 
 - List Markdown tasks
 - Create, edit, and delete tasks
-- Frontmatter-based `MUST` / `WANT` priority and `TODO` / `WIP` / `DONE` status
+- Frontmatter-based `MUST` / `WANT` priority and `TODO` / `DONE` status
 - Drag-and-drop reordering
 - Persistent ordering via a dedicated metadata file
 - Auto-reload on external file changes
@@ -46,7 +46,7 @@ Each Markdown file should have frontmatter with the following keys:
 ---
 title: Release notes
 priority: MUST
-status: WIP
+status: TODO
 createdAt: 2026-03-15T08:00:00.000Z
 updatedAt: 2026-03-15T09:30:00.000Z
 ---
@@ -60,13 +60,15 @@ Free-form body text.
 
 - `title`
 - `priority`: `MUST` or `WANT`
-- `status`: `TODO`, `WIP`, or `DONE`
+- `status`: `TODO` or `DONE`
 - `createdAt`: UTC ISO 8601
 - `updatedAt`: UTC ISO 8601
 
 Unknown frontmatter keys are preserved as-is.
 
 Files missing required keys are displayed with default values and normalized on save.
+
+Legacy `status: WIP` is treated as `TODO` when loaded and will be replaced with `TODO` on save.
 
 Files with unparseable YAML frontmatter are excluded from the list and shown in the error panel.
 
