@@ -1011,6 +1011,7 @@ export function App(): ReactElement {
                   />
                 ) : (
                   <textarea
+                    aria-label="Markdown body"
                     ref={(el) => {
                       textareaRef.current = el;
                       if (el) {
