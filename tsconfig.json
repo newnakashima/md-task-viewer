@@ -15,7 +15,12 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["client/src/*"],
+      "~/*": ["src/*"]
+    }
   },
   "include": ["src", "client", "tests", "vite.config.ts", "playwright.config.ts", "tsup.config.ts"]
 }
