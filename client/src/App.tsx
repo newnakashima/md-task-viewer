@@ -103,14 +103,49 @@ function draftFromTask(task: TaskRecord): DraftTask {
   };
 }
 
+function CopyPathButton({
+  path,
+  onCopy,
+  className,
+  label
+}: {
+  path: string;
+  onCopy: (path: string) => void;
+  className?: string;
+  label?: string;
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      className={`ghost-button copy-path-button${className ? ` ${className}` : ""}`}
+      title={`Copy ${path}`}
+      aria-label={`Copy path ${path}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onCopy(path);
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path d="M7 3a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V5a2 2 0 00-2-2H7z" />
+        <path d="M3 7a2 2 0 012-2v8a4 4 0 004 4h6a2 2 0 01-2 2H7a4 4 0 01-4-4V7z" />
+      </svg>
+      {label}
+    </button>
+  );
+}
+
 function SortableTaskItem({
   task,
   selected,
-  onSelect
+  onSelect,
+  onCopyPath
 }: {
   task: TaskRecord;
   selected: boolean;
   onSelect: (path: string) => void;
+  onCopyPath: (path: string) => void;
 }): ReactElement {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.path });
   const style = {
@@ -119,23 +154,29 @@ function SortableTaskItem({
   };
 
   return (
-    <button
+    <div
       ref={setNodeRef}
       style={style}
-      type="button"
       className={`task-row${selected ? " task-row-selected" : ""}`}
       onClick={() => onSelect(task.path)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(task.path);
+        }
+      }}
       {...attributes}
       {...listeners}
     >
       <span className="task-row-badges">
         <span className={`badge badge-${task.frontmatter.priority.toLowerCase()}`}>{task.frontmatter.priority}</span>
         <span className={`badge badge-${task.frontmatter.status.toLowerCase()}`}>{task.frontmatter.status}</span>
+        <CopyPathButton path={task.path} onCopy={onCopyPath} className="task-row-copy" />
       </span>
       <strong>{task.frontmatter.title}</strong>
       <small>{task.path}</small>
       <small>Updated {formatDate(task.frontmatter.updatedAt)}</small>
-    </button>
+    </div>
   );
 }
 
@@ -668,6 +709,15 @@ export function App(): ReactElement {
     }
   }
 
+  async function copyPathToClipboard(path: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(path);
+      setNotice(`Copied: ${path}`, "success");
+    } catch {
+      setNotice("Failed to copy path.", "error");
+    }
+  }
+
   async function executeCommands(commands: CommandStep[]): Promise<void> {
     if (!draft?.originalPath || commands.length === 0) {
       return;
@@ -771,6 +821,7 @@ export function App(): ReactElement {
                           setDraft(draftFromTask(target));
                         }
                       }}
+                      onCopyPath={(path) => void copyPathToClipboard(path)}
                     />
                   ))}
                   {filteredTasks.length === 0 ? <p className="empty-list">{hideDone ? "No active tasks." : "No tasks yet. Create your first markdown task."}</p> : null}
@@ -880,7 +931,17 @@ export function App(): ReactElement {
                   </label>
 
                   <label>
-                    <span>Relative path</span>
+                    <span className="field-label-row">
+                      <span>Relative path</span>
+                      {draft.path ? (
+                        <CopyPathButton
+                          path={draft.path}
+                          onCopy={(path) => void copyPathToClipboard(path)}
+                          className="field-label-copy"
+                          label="Copy"
+                        />
+                      ) : null}
+                    </span>
                     <input
                       value={draft.path}
                       onChange={(event) => {
