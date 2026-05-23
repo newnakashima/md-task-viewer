@@ -1,390 +1,24 @@
 import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 
-import DOMPurify from "dompurify";
-import { marked } from "marked";
-import { slugify } from "~/slugify";
-
-marked.setOptions({
-  gfm: true,
-  breaks: true,
-  async: false,
-});
-
-const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.userAgent);
-
-type Priority = "MUST" | "WANT";
-type Status = "TODO" | "DONE";
-
-interface CommandStep {
-  command: string;
-  passBody?: "arg" | "stdin" | false;
-}
-
-interface CommandExecutionResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  duration: number;
-}
-
-interface TaskRecord {
-  path: string;
-  content: string;
-  frontmatter: {
-    title: string;
-    priority: Priority;
-    status: Status;
-    createdAt: string;
-    updatedAt: string;
-  };
-  extraFrontmatter: Record<string, unknown>;
-}
-
-interface TaskError {
-  path: string;
-  message: string;
-}
-
-interface TaskListResponse {
-  tasks: TaskRecord[];
-  errors: TaskError[];
-}
-
-interface DraftTask {
-  originalPath: string | null;
-  path: string;
-  title: string;
-  priority: Priority;
-  status: Status;
-  content: string;
-  updatedAt?: string;
-  createdAt?: string;
-  extraFrontmatter: Record<string, unknown>;
-}
-
-function formatDate(value?: string): string {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
-function draftFromTask(task: TaskRecord): DraftTask {
-  return {
-    originalPath: task.path,
-    path: task.path,
-    title: task.frontmatter.title,
-    priority: task.frontmatter.priority,
-    status: task.frontmatter.status,
-    content: task.content,
-    updatedAt: task.frontmatter.updatedAt,
-    createdAt: task.frontmatter.createdAt,
-    extraFrontmatter: task.extraFrontmatter
-  };
-}
-
-function CopyPathButton({
-  path,
-  onCopy,
-  className,
-  label
-}: {
-  path: string;
-  onCopy: (path: string) => void;
-  className?: string;
-  label?: string;
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      className={`ghost-button copy-path-button${className ? ` ${className}` : ""}`}
-      title={`Copy ${path}`}
-      aria-label={`Copy path ${path}`}
-      onClick={(event) => {
-        event.stopPropagation();
-        onCopy(path);
-      }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
-    >
-      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-        <path d="M7 3a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V5a2 2 0 00-2-2H7z" />
-        <path d="M3 7a2 2 0 012-2v8a4 4 0 004 4h6a2 2 0 01-2 2H7a4 4 0 01-4-4V7z" />
-      </svg>
-      {label}
-    </button>
-  );
-}
-
-function SortableTaskItem({
-  task,
-  selected,
-  onSelect,
-  onCopyPath
-}: {
-  task: TaskRecord;
-  selected: boolean;
-  onSelect: (path: string) => void;
-  onCopyPath: (path: string) => void;
-}): ReactElement {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.path });
-  const { onKeyDown: sortableOnKeyDown, ...sortableListeners } = listeners;
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`task-row${selected ? " task-row-selected" : ""}`}
-      onClick={() => onSelect(task.path)}
-      onKeyDown={(event) => {
-        sortableOnKeyDown?.(event);
-        if (!event.defaultPrevented && event.key === "Enter") {
-          event.preventDefault();
-          onSelect(task.path);
-        }
-      }}
-      {...attributes}
-      {...sortableListeners}
-    >
-      <span className="task-row-badges">
-        <span className={`badge badge-${task.frontmatter.priority.toLowerCase()}`}>{task.frontmatter.priority}</span>
-        <span className={`badge badge-${task.frontmatter.status.toLowerCase()}`}>{task.frontmatter.status}</span>
-        <CopyPathButton path={task.path} onCopy={onCopyPath} className="task-row-copy" />
-      </span>
-      <strong>{task.frontmatter.title}</strong>
-      <small>{task.path}</small>
-      <small>Updated {formatDate(task.frontmatter.updatedAt)}</small>
-    </div>
-  );
-}
-
-async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
-  if (init?.body !== undefined && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const response = await fetch(input, {
-    headers,
-    ...init
-  });
-
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(payload?.error ?? `Request failed: ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
-}
-
-function RemoveButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }): ReactElement {
-  return (
-    <button
-      type="button"
-      className="ghost-button settings-remove-button"
-      onClick={onClick}
-      disabled={disabled}
-      title="Remove"
-    >
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-      </svg>
-    </button>
-  );
-}
-
-function CommandStepEditor({
-  steps,
-  onChange,
-  showPassBody
-}: {
-  steps: CommandStep[];
-  onChange: (steps: CommandStep[]) => void;
-  showPassBody: boolean;
-}): ReactElement {
-  function updateStep(index: number, field: keyof CommandStep, value: string | false): void {
-    const next = [...steps];
-    next[index] = { ...next[index], [field]: value };
-    onChange(next);
-  }
-
-  return (
-    <>
-      <div className="settings-dir-list">
-        {steps.map((step, index) => (
-          <div key={index} className="command-step-row">
-            <input
-              value={step.command}
-              onChange={(e) => updateStep(index, "command", e.target.value)}
-              placeholder={`e.g. echo $TASK_TITLE`}
-            />
-            {showPassBody && index === 0 ? (
-              <select
-                value={step.passBody === false ? "false" : (step.passBody || "false")}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  updateStep(index, "passBody", v === "false" ? false : v);
-                }}
-                title="Pass task body"
-              >
-                <option value="false">No body</option>
-                <option value="arg">Body as arg</option>
-                <option value="stdin">Body as stdin</option>
-              </select>
-            ) : null}
-            <RemoveButton onClick={() => onChange(steps.filter((_, i) => i !== index))} disabled={steps.length <= 1} />
-          </div>
-        ))}
-      </div>
-      <button type="button" className="ghost-button" onClick={() => onChange([...steps, { command: "" }])}>+ Add command</button>
-    </>
-  );
-}
-
-function SettingsPanel({
-  taskDirs,
-  ignorePaths,
-  commands,
-  busy,
-  onSave,
-  onClose
-}: {
-  taskDirs: string[];
-  ignorePaths: string[];
-  commands: CommandStep[];
-  busy: boolean;
-  onSave: (dirs: string[], ignorePaths: string[], commands: CommandStep[]) => void;
-  onClose: () => void;
-}): ReactElement {
-  const [dirs, setDirs] = useState<string[]>(taskDirs);
-  const [ignorePatterns, setIgnorePatterns] = useState<string[]>(ignorePaths.length > 0 ? ignorePaths : [""]);
-  const [cmdSteps, setCmdSteps] = useState<CommandStep[]>(commands.length > 0 ? commands : [{ command: "" }]);
-
-  function updateDir(index: number, value: string): void {
-    const next = [...dirs];
-    next[index] = value;
-    setDirs(next);
-  }
-
-  function addDir(): void {
-    setDirs([...dirs, ""]);
-  }
-
-  function removeDir(index: number): void {
-    setDirs(dirs.filter((_, i) => i !== index));
-  }
-
-  function updateIgnore(index: number, value: string): void {
-    const next = [...ignorePatterns];
-    next[index] = value;
-    setIgnorePatterns(next);
-  }
-
-  function addIgnore(): void {
-    setIgnorePatterns([...ignorePatterns, ""]);
-  }
-
-  function removeIgnore(index: number): void {
-    setIgnorePatterns(ignorePatterns.filter((_, i) => i !== index));
-  }
-
-  return (
-    <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="panel-header">
-          <h2>Settings</h2>
-          <button type="button" className="ghost-button" onClick={onClose}>Close</button>
-        </div>
-        <div className="settings-body">
-          <label>
-            <span className="settings-label">Task directories</span>
-            <small className="settings-hint">Directories to scan for .md task files (relative to root)</small>
-          </label>
-          <div className="settings-dir-list">
-            {dirs.map((dir, index) => (
-              <div key={index} className="settings-dir-row">
-                <input
-                  value={dir}
-                  onChange={(e) => updateDir(index, e.target.value)}
-                  placeholder="e.g. tasks"
-                />
-                <RemoveButton onClick={() => removeDir(index)} disabled={dirs.length <= 1} />
-              </div>
-            ))}
-          </div>
-          <button type="button" className="ghost-button" onClick={addDir}>+ Add directory</button>
-
-          <label>
-            <span className="settings-label">Ignore patterns</span>
-            <small className="settings-hint">Glob patterns for paths to exclude (e.g. __done__/**, archived/**)</small>
-          </label>
-          <div className="settings-dir-list">
-            {ignorePatterns.map((pattern, index) => (
-              <div key={index} className="settings-dir-row">
-                <input
-                  value={pattern}
-                  onChange={(e) => updateIgnore(index, e.target.value)}
-                  placeholder="e.g. __done__/**"
-                />
-                <RemoveButton onClick={() => removeIgnore(index)} disabled={ignorePatterns.length <= 1} />
-              </div>
-            ))}
-          </div>
-          <button type="button" className="ghost-button" onClick={addIgnore}>+ Add pattern</button>
-
-          <label>
-            <span className="settings-label">Commands</span>
-            <small className="settings-hint">Commands to execute against tasks. Variables: $TASK_TITLE, $TASK_FILEPATH, $TASK_BODY</small>
-          </label>
-          <CommandStepEditor steps={cmdSteps} onChange={setCmdSteps} showPassBody={true} />
-        </div>
-        <div className="form-actions">
-          <button
-            type="button"
-            className="primary-button"
-            disabled={busy || dirs.every((d) => !d.trim())}
-            onClick={() => onSave(
-              dirs.filter((d) => d.trim()),
-              ignorePatterns.filter((p) => p.trim()),
-              cmdSteps.filter((s) => s.command.trim())
-            )}
-          >
-            Save
-          </button>
-          <button type="button" className="ghost-button" onClick={onClose}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import type {
+  CommandExecutionResult,
+  CommandStep,
+  DraftTask,
+  Notice,
+  NoticeTone,
+  TaskError,
+  TaskListResponse,
+  TaskRecord
+} from "./types";
+import { draftFromTask } from "./utils";
+import { requestJson } from "./api";
+import "./markedSetup";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { TaskListPanel } from "./components/TaskListPanel";
+import { TaskDetailForm } from "./components/TaskDetailForm";
+import { ExecuteTab } from "./components/ExecuteTab";
 
 export function App(): ReactElement {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
@@ -393,11 +27,11 @@ export function App(): ReactElement {
   const [draft, setDraft] = useState<DraftTask | null>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const [notice, setNoticeState] = useState<{ message: string; tone: "info" | "success" | "error" }>({
+  const [notice, setNoticeState] = useState<Notice>({
     message: "Loading tasks...",
     tone: "info"
   });
-  const setNotice = (message: string, tone: "info" | "success" | "error" = "info"): void => {
+  const setNotice = (message: string, tone: NoticeTone = "info"): void => {
     setNoticeState({ message, tone });
   };
   const [busy, setBusy] = useState<boolean>(false);
@@ -410,41 +44,6 @@ export function App(): ReactElement {
   const [globalCommands, setGlobalCommands] = useState<CommandStep[]>([]);
   const [executionResult, setExecutionResult] = useState<CommandExecutionResult | null>(null);
   const [executing, setExecuting] = useState<boolean>(false);
-  const [showCommandOverride, setShowCommandOverride] = useState<boolean>(false);
-  const [bodyFullHeight, setBodyFullHeight] = useState<boolean>(false);
-  const [showPreview, setShowPreview] = useState<boolean>(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const cursorPosRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
-  const restoreFocusRef = useRef<boolean>(false);
-  const editorScrollRef = useRef<number>(0);
-  const previewScrollRef = useRef<number>(0);
-  const restoreEditorScrollRef = useRef<boolean>(false);
-  const restorePreviewScrollRef = useRef<boolean>(false);
-
-  const previewHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(draft?.content || "") as string),
-    [draft?.content]
-  );
-
-  function togglePreview(): void {
-    setShowPreview((prev) => {
-      if (!prev && textareaRef.current) {
-        cursorPosRef.current = {
-          start: textareaRef.current.selectionStart,
-          end: textareaRef.current.selectionEnd,
-        };
-        editorScrollRef.current = textareaRef.current.scrollTop;
-        restorePreviewScrollRef.current = true;
-      }
-      if (prev && previewRef.current) {
-        previewScrollRef.current = previewRef.current.scrollTop;
-        restoreFocusRef.current = true;
-        restoreEditorScrollRef.current = true;
-      }
-      return !prev;
-    });
-  }
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -454,17 +53,6 @@ export function App(): ReactElement {
   const selectedTask = useMemo(
     () => filteredTasks.find((task) => task.path === selectedPath) ?? null,
     [selectedPath, filteredTasks]
-  );
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8
-      }
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
-    })
   );
 
   async function loadTasks(options?: { preserveDraft?: boolean }): Promise<void> {
@@ -544,48 +132,9 @@ export function App(): ReactElement {
 
     const current = draftRef.current;
     if (!current || current.originalPath !== selectedTask.path) {
-      setBodyFullHeight(false);
-      setShowPreview(false);
       setDraft(draftFromTask(selectedTask));
     }
   }, [selectedTask]);
-
-  useEffect(() => {
-    editorScrollRef.current = 0;
-    previewScrollRef.current = 0;
-    requestAnimationFrame(() => {
-      if (textareaRef.current) {
-        textareaRef.current.scrollTop = 0;
-      }
-      if (previewRef.current) {
-        previewRef.current.scrollTop = 0;
-      }
-    });
-  }, [selectedPath]);
-
-  useEffect(() => {
-    function handleBodyFullHeightShortcut(e: KeyboardEvent): void {
-      const mod = isMac ? e.metaKey : e.ctrlKey;
-      if (mod && e.shiftKey && e.key === "H") {
-        e.preventDefault();
-        setBodyFullHeight((prev) => !prev);
-      }
-    }
-    window.addEventListener("keydown", handleBodyFullHeightShortcut);
-    return () => window.removeEventListener("keydown", handleBodyFullHeightShortcut);
-  }, []);
-
-  useEffect(() => {
-    function handlePreviewShortcut(e: KeyboardEvent): void {
-      const mod = isMac ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === "e") {
-        e.preventDefault();
-        togglePreview();
-      }
-    }
-    window.addEventListener("keydown", handlePreviewShortcut);
-    return () => window.removeEventListener("keydown", handlePreviewShortcut);
-  }, []);
 
   useEffect(() => {
     const source = new EventSource("/api/events");
@@ -792,58 +341,24 @@ export function App(): ReactElement {
       </header>
 
       <main className="layout-grid">
-        <section className="panel">
-          <div className="panel-header">
-            <h2>Tasks</h2>
-            <span className="panel-header-right">
-              <label className="filter-toggle">
-                <input type="checkbox" checked={hideDone} onChange={() => setHideDone(!hideDone)} />
-                <span>Hide DONE</span>
-              </label>
-              <span>{filteredTasks.length} items</span>
-            </span>
-          </div>
-
-          <div className="sidebar-scroll">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => void handleDragEnd(event)}>
-              <SortableContext items={filteredTasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
-                <div className="task-list">
-                  {filteredTasks.map((task) => (
-                    <SortableTaskItem
-                      key={task.path}
-                      task={task}
-                      selected={task.path === selectedPath}
-                      onSelect={(path) => {
-                        setSelectedPath(path);
-                        setActiveTab("detail");
-                        setExecutionResult(null);
-                        setShowCommandOverride(false);
-                        const target = tasks.find((t) => t.path === path);
-                        if (target) {
-                          setDraft(draftFromTask(target));
-                        }
-                      }}
-                      onCopyPath={(path) => void copyPathToClipboard(path)}
-                    />
-                  ))}
-                  {filteredTasks.length === 0 ? <p className="empty-list">{hideDone ? "No active tasks." : "No tasks yet. Create your first markdown task."}</p> : null}
-                </div>
-              </SortableContext>
-            </DndContext>
-
-            {errors.length > 0 ? (
-              <div className="error-panel">
-                <h3>Unreadable Markdown</h3>
-                {errors.map((error) => (
-                  <p key={error.path}>
-                    <strong>{error.path}</strong>
-                    <span>{error.message}</span>
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </section>
+        <TaskListPanel
+          tasks={filteredTasks}
+          selectedPath={selectedPath}
+          errors={errors}
+          hideDone={hideDone}
+          onHideDoneChange={setHideDone}
+          onSelectTask={(path) => {
+            setSelectedPath(path);
+            setActiveTab("detail");
+            setExecutionResult(null);
+            const target = tasks.find((t) => t.path === path);
+            if (target) {
+              setDraft(draftFromTask(target));
+            }
+          }}
+          onCopyPath={(path) => void copyPathToClipboard(path)}
+          onDragEnd={(event) => void handleDragEnd(event)}
+        />
 
         <section className="panel editor-panel">
           <div className="panel-header">
@@ -871,391 +386,35 @@ export function App(): ReactElement {
           ) : null}
 
           {draft && activeTab === "detail" ? (
-            <div className="task-form">
-              {!bodyFullHeight ? (
-                <>
-                  <div className="field-row field-row-top">
-                    <label>
-                      <span>Priority</span>
-                      <select
-                        value={draft.priority}
-                        onChange={(event) => {
-                          const value = event.target.value as Priority;
-                          setDraft({ ...draft, priority: value });
-                          if (draft.originalPath) {
-                            void patchField("priority", value);
-                          }
-                        }}
-                      >
-                        <option value="MUST">MUST</option>
-                        <option value="WANT">WANT</option>
-                      </select>
-                    </label>
-
-                    <label>
-                      <span>Status</span>
-                      <select
-                        value={draft.status}
-                        onChange={(event) => {
-                          const value = event.target.value as Status;
-                          setDraft({ ...draft, status: value });
-                          if (draft.originalPath) {
-                            void patchField("status", value);
-                          }
-                        }}
-                      >
-                        <option value="TODO">TODO</option>
-                        <option value="DONE">DONE</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <label>
-                    <span>Title</span>
-                    <input
-                      value={draft.title}
-                      onChange={(event) => {
-                        const newTitle = event.target.value;
-                        const updates: Partial<DraftTask> = { title: newTitle };
-                        if (!pathManuallyEdited && draft.originalPath === null) {
-                          const dir = taskDirs[0] || "";
-                          const dirPath = dir ? `${dir}/` : "";
-                          updates.path = newTitle.trim()
-                            ? `${dirPath}${slugify(newTitle)}.md`
-                            : dirPath;
-                        }
-                        setDraft({ ...draft, ...updates });
-                      }}
-                      placeholder="Write release notes"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    <span className="field-label-row">
-                      <span>Relative path</span>
-                      {draft.path ? (
-                        <CopyPathButton
-                          path={draft.path}
-                          onCopy={(path) => void copyPathToClipboard(path)}
-                          className="field-label-copy"
-                          label="Copy"
-                        />
-                      ) : null}
-                    </span>
-                    <input
-                      value={draft.path}
-                      onChange={(event) => {
-                        setPathManuallyEdited(true);
-                        setDraft({ ...draft, path: event.target.value });
-                      }}
-                      placeholder="planning/release-notes.md"
-                    />
-                  </label>
-
-                  <div className="meta-strip">
-                    <span>Created {formatDate(draft.createdAt)}</span>
-                    <span>Updated {formatDate(draft.updatedAt)}</span>
-                  </div>
-                </>
-              ) : null}
-
-              <div className="editor-label">
-                <span className="editor-label-header">
-                  <span>Markdown body</span>
-                  <button
-                    type="button"
-                    className="ghost-button body-fullheight-button"
-                    aria-pressed={bodyFullHeight}
-                    onClick={() => setBodyFullHeight(!bodyFullHeight)}
-                    title={`${isMac ? "Cmd" : "Ctrl"}+Shift+H`}
-                  >
-                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                      {bodyFullHeight ? (
-                        <path fillRule="evenodd" d="M3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
-                      ) : (
-                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 11-2 0V6.414l-3.293 3.293a1 1 0 01-1.414-1.414L14.586 5H13a1 1 0 01-1-1zM3 12a1 1 0 011-1h2a1 1 0 011 1v2.586l3.293-3.293a1 1 0 011.414 1.414L8.414 16H10a1 1 0 110 2H4a1 1 0 01-1-1v-4h0zm14-1a1 1 0 00-1 1v2.586l-3.293-3.293a1 1 0 00-1.414 1.414L14.586 16H13a1 1 0 100 2h4a1 1 0 001-1v-4h0a1 1 0 00-1-1z" clipRule="evenodd" />
-                      )}
-                    </svg>
-                    {bodyFullHeight ? "Collapse" : "Expand"} ({isMac ? "\u2318" : "Ctrl+"}⇧H)
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-button body-fullheight-button"
-                    aria-pressed={showPreview}
-                    onClick={togglePreview}
-                    title={`${isMac ? "Cmd" : "Ctrl"}+E`}
-                  >
-                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                      {showPreview ? (
-                        <path fillRule="evenodd" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" clipRule="evenodd" />
-                      ) : (
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0c0-1.1.9-2 2-2 .266 0 .52.052.752.147A5.984 5.984 0 0116 10c0 .38-.035.752-.103 1.114a4.003 4.003 0 01-2.59 2.588 1.994 1.994 0 01-1.307.263V14a1 1 0 11-2 0v-1.268a2 2 0 01.482-1.307A2.002 2.002 0 0112 9.616a3.98 3.98 0 01-.653-.298A3.98 3.98 0 019 10H8.5A2.5 2.5 0 006 12.5V13a1 1 0 11-2 0v-.5a4.5 4.5 0 012.634-4.1 5.996 5.996 0 01-.302-.873z" clipRule="evenodd" />
-                      )}
-                    </svg>
-                    {showPreview ? "Edit" : "Preview"} ({isMac ? "\u2318" : "Ctrl+"}E)
-                  </button>
-                </span>
-                {showPreview ? (
-                  <div
-                    ref={(el) => {
-                      previewRef.current = el;
-                      if (el && restorePreviewScrollRef.current) {
-                        restorePreviewScrollRef.current = false;
-                        el.scrollTop = previewScrollRef.current;
-                      }
-                    }}
-                    className="markdown-preview"
-                    dangerouslySetInnerHTML={{ __html: previewHtml }}
-                  />
-                ) : (
-                  <textarea
-                    aria-label="Markdown body"
-                    ref={(el) => {
-                      textareaRef.current = el;
-                      if (el) {
-                        if (restoreFocusRef.current) {
-                          restoreFocusRef.current = false;
-                          const { start, end } = cursorPosRef.current;
-                          el.setSelectionRange(start, end);
-                          el.focus();
-                        }
-                        if (restoreEditorScrollRef.current) {
-                          restoreEditorScrollRef.current = false;
-                          el.scrollTop = editorScrollRef.current;
-                        }
-                      }
-                    }}
-                    value={draft.content}
-                    onChange={(event) => setDraft({ ...draft, content: event.target.value })}
-                    onKeyDown={(event) => {
-                      if (event.nativeEvent.isComposing) return;
-
-                      const ta = event.currentTarget;
-                      const { selectionStart, selectionEnd, value } = ta;
-
-                      if (event.key === "Tab") {
-                        event.preventDefault();
-                        const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-                        const lineEnd = value.indexOf("\n", selectionEnd);
-                        const end = lineEnd === -1 ? value.length : lineEnd;
-
-                        if (selectionStart !== selectionEnd) {
-                          // Multi-line indent/dedent
-                          const selectedLines = value.slice(lineStart, end);
-                          const newLines = selectedLines
-                            .split("\n")
-                            .map((line) =>
-                              event.shiftKey
-                                ? line.startsWith("  ") ? line.slice(2) : line
-                                : "  " + line
-                            )
-                            .join("\n");
-                          const newValue = value.slice(0, lineStart) + newLines + value.slice(end);
-                          setDraft({ ...draft, content: newValue });
-                          requestAnimationFrame(() => {
-                            ta.selectionStart = lineStart;
-                            ta.selectionEnd = lineStart + newLines.length;
-                          });
-                        } else if (event.shiftKey) {
-                          // Shift+Tab: remove 2 spaces from line start
-                          const line = value.slice(lineStart, end);
-                          if (line.startsWith("  ")) {
-                            const newValue = value.slice(0, lineStart) + line.slice(2) + value.slice(end);
-                            const newCursor = Math.max(lineStart, selectionStart - 2);
-                            setDraft({ ...draft, content: newValue });
-                            requestAnimationFrame(() => {
-                              ta.selectionStart = ta.selectionEnd = newCursor;
-                            });
-                          }
-                        } else {
-                          // Tab: insert 2 spaces at line start
-                          const newValue = value.slice(0, lineStart) + "  " + value.slice(lineStart);
-                          setDraft({ ...draft, content: newValue });
-                          requestAnimationFrame(() => {
-                            ta.selectionStart = ta.selectionEnd = selectionStart + 2;
-                          });
-                        }
-                        return;
-                      }
-
-                      if (event.key === "Enter") {
-                        const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-                        const currentLine = value.slice(lineStart, selectionStart);
-                        const listMatch = currentLine.match(/^(\s*)([-*]|\d+\.)\s/);
-
-                        if (listMatch) {
-                          event.preventDefault();
-                          const [fullMatch, indent, marker] = listMatch;
-                          const textAfterMarker = currentLine.slice(fullMatch.length);
-
-                          if (textAfterMarker.trim() === "") {
-                            // Empty list item — remove the marker, leave blank line
-                            const newValue = value.slice(0, lineStart) + value.slice(selectionStart);
-                            setDraft({ ...draft, content: newValue });
-                            requestAnimationFrame(() => {
-                              ta.selectionStart = ta.selectionEnd = lineStart;
-                            });
-                          } else {
-                            // Continue the list
-                            const nextMarker = /^\d+\./.test(marker)
-                              ? `${parseInt(marker) + 1}.`
-                              : marker;
-                            const insertion = `\n${indent}${nextMarker} `;
-                            const newValue = value.slice(0, selectionStart) + insertion + value.slice(selectionEnd);
-                            const newCursor = selectionStart + insertion.length;
-                            setDraft({ ...draft, content: newValue });
-                            requestAnimationFrame(() => {
-                              ta.selectionStart = ta.selectionEnd = newCursor;
-                            });
-                          }
-                        }
-                      }
-                    }}
-                    placeholder="# Notes"
-                  />
-                )}
-              </div>
-
-              {draft.originalPath ? (
-                <>
-                  <button
-                    type="button"
-                    className="collapsible-header"
-                    onClick={() => setShowCommandOverride(!showCommandOverride)}
-                  >
-                    <span className={`collapsible-chevron${showCommandOverride ? " open" : ""}`}>&#9654;</span>
-                    Command Override
-                  </button>
-                  {showCommandOverride ? (
-                    <div className="collapsible-body">
-                      <CommandStepEditor
-                        steps={
-                          Array.isArray(draft.extraFrontmatter.commands) && draft.extraFrontmatter.commands.length > 0
-                            ? (draft.extraFrontmatter.commands as CommandStep[])
-                            : [{ command: "" }]
-                        }
-                        onChange={(steps) => {
-                          const hasContent = steps.some((s) => s.command.trim());
-                          setDraft({
-                            ...draft,
-                            extraFrontmatter: {
-                              ...draft.extraFrontmatter,
-                              commands: hasContent ? steps : undefined
-                            }
-                          });
-                        }}
-                        showPassBody={true}
-                      />
-                      <button
-                        type="button"
-                        className="ghost-button"
-                        onClick={() => {
-                          const { commands: _, ...rest } = draft.extraFrontmatter;
-                          setDraft({ ...draft, extraFrontmatter: rest });
-                        }}
-                      >
-                        Reset to Global
-                      </button>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-
-              <div className="form-actions">
-                <button type="button" className="primary-button" disabled={busy} onClick={() => void saveDraft()}>
-                  {draft.originalPath ? "Save Task" : "Create Task"}
-                </button>
-                {draft.originalPath ? (
-                  <button type="button" className="danger-button" disabled={busy} onClick={() => void deleteSelectedTask()}>
-                    Delete
-                  </button>
-                ) : (
-                  <button type="button" className="ghost-button" onClick={() => setDraft(null)}>
-                    Cancel
-                  </button>
-                )}
-              </div>
-
-              <p className={`notice notice--${notice.tone}`} role={notice.tone === "error" ? "alert" : undefined}>
-                {notice.tone === "error" && notice.message ? <span className="notice-icon" aria-hidden="true">!</span> : null}
-                {notice.message}
-              </p>
-            </div>
+            <TaskDetailForm
+              draft={draft}
+              setDraft={setDraft}
+              selectedTask={selectedTask}
+              taskDirs={taskDirs}
+              pathManuallyEdited={pathManuallyEdited}
+              setPathManuallyEdited={setPathManuallyEdited}
+              busy={busy}
+              notice={notice}
+              onSave={() => void saveDraft()}
+              onDelete={() => void deleteSelectedTask()}
+              onCancel={() => setDraft(null)}
+              onPatchField={(field, value) => void patchField(field, value)}
+              onCopyPath={(path) => void copyPathToClipboard(path)}
+            />
           ) : draft && activeTab === "execute" ? (
-            <div className="execute-panel">
-              {(() => {
-                const savedTaskCmds = selectedTask && Array.isArray(selectedTask.extraFrontmatter.commands) && selectedTask.extraFrontmatter.commands.length > 0
-                  ? (selectedTask.extraFrontmatter.commands as CommandStep[])
-                  : null;
-                const resolvedCmds = savedTaskCmds ?? (globalCommands.length > 0 ? globalCommands : []);
-                const source = savedTaskCmds ? "Task override" : "Global";
-
-                return resolvedCmds.length > 0 ? (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em" }}>
-                        Commands ({source})
-                      </span>
-                    </div>
-                    <div className="execute-commands">
-                      {resolvedCmds.map((step, index) => (
-                        <div key={index} className="execute-command-item">
-                          <span className="command-index">{index + 1}.</span>
-                          <code>{step.command}</code>
-                          {step.passBody && step.passBody !== false && index === 0 ? (
-                            <span className="pass-body-badge">{step.passBody}</span>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="form-actions">
-                      <button
-                        type="button"
-                        className="primary-button"
-                        disabled={executing}
-                        onClick={() => void executeCommands(resolvedCmds)}
-                      >
-                        {executing ? "Executing..." : "Execute"}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="execute-no-commands">No commands configured. Set commands in Settings or in the task&apos;s Command Override section.</p>
-                );
-              })()}
-
-              {executionResult ? (
-                <div className="execution-result">
-                  <div className="execution-result-header">
-                    <div className="execution-result-meta">
-                      <span className={executionResult.exitCode !== 0 ? "exit-code-error" : ""}>
-                        Exit: {executionResult.exitCode}
-                      </span>
-                      <span>{executionResult.duration}ms</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="ghost-button copy-button"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(executionResult.stdout);
-                        setNotice("Copied to clipboard.", "success");
-                      }}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                  <pre>{executionResult.stdout}</pre>
-                  {executionResult.stderr ? (
-                    <pre className="execution-stderr">{executionResult.stderr}</pre>
-                  ) : null}
-                  <p className={`notice notice--${notice.tone}`} role={notice.tone === "error" ? "alert" : undefined}>
-                {notice.tone === "error" && notice.message ? <span className="notice-icon" aria-hidden="true">!</span> : null}
-                {notice.message}
-              </p>
-                </div>
-              ) : null}
-            </div>
+            <ExecuteTab
+              draft={draft}
+              selectedTask={selectedTask}
+              globalCommands={globalCommands}
+              executing={executing}
+              executionResult={executionResult}
+              notice={notice}
+              onExecute={(commands) => void executeCommands(commands)}
+              onCopyStdout={(stdout) => {
+                void navigator.clipboard.writeText(stdout);
+                setNotice("Copied to clipboard.", "success");
+              }}
+            />
           ) : !draft ? (
             <div className="empty-editor">
               <p>Select a task to edit it, or create a new one.</p>
