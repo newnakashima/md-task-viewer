@@ -148,6 +148,7 @@ function SortableTaskItem({
   onCopyPath: (path: string) => void;
 }): ReactElement {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.path });
+  const { onKeyDown: sortableOnKeyDown, ...sortableListeners } = listeners;
   const style = {
     transform: CSS.Transform.toString(transform),
     transition
@@ -160,13 +161,14 @@ function SortableTaskItem({
       className={`task-row${selected ? " task-row-selected" : ""}`}
       onClick={() => onSelect(task.path)}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        sortableOnKeyDown?.(event);
+        if (!event.defaultPrevented && event.key === "Enter") {
           event.preventDefault();
           onSelect(task.path);
         }
       }}
       {...attributes}
-      {...listeners}
+      {...sortableListeners}
     >
       <span className="task-row-badges">
         <span className={`badge badge-${task.frontmatter.priority.toLowerCase()}`}>{task.frontmatter.priority}</span>

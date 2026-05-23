@@ -211,6 +211,7 @@ button {
   display: grid;
   gap: 3px;
   width: 100%;
+  cursor: pointer;
   text-align: left;
   padding: 8px 10px;
   border-radius: 0;
