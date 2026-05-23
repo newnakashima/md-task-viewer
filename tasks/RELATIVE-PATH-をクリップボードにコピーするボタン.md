@@ -1,9 +1,9 @@
 ---
 title: RELATIVE PATH をクリップボードにコピーするボタン
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-05-17T08:27:31.297Z'
-updatedAt: '2026-05-23T06:57:04.314Z'
+updatedAt: '2026-05-23T07:05:07.241Z'
 ---
 完了したタスクがディレクトリ内に溜まってくると、md-task-viewer 以外のクライアントからだと、どれがアクティブなタスクなのかわかりづらくなる。
 
