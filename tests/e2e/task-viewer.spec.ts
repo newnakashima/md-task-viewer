@@ -23,7 +23,7 @@ test("creates, edits, deletes, reorders, and refreshes tasks", async ({ page }) 
 
   try {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Local tasks, direct file control." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Markdown Task Viewer" })).toBeVisible();
 
     await page.getByRole("button", { name: "New Task" }).click();
     await page.getByLabel("Title").fill("Gamma");
@@ -61,10 +61,12 @@ test("creates, edits, deletes, reorders, and refreshes tasks", async ({ page }) 
 
     await writeFile(
       path.join(rootDir, "beta.md"),
-      "---\ntitle: Beta\npriority: WANT\nstatus: DONE\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-02T00:00:00.000Z\n---\nBeta external",
+      "---\ntitle: Beta\npriority: MUST\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-02T00:00:00.000Z\n---\nBeta external",
       "utf8"
     );
-    await expect(page.getByRole("button", { name: /WANT DONE Beta/ })).toBeVisible();
+    const updatedBetaRow = page.locator(".task-row").filter({ hasText: "Beta" });
+    await expect(updatedBetaRow.locator(".badge-must")).toBeVisible();
+    await expect(updatedBetaRow.locator(".badge-todo")).toBeVisible();
   } finally {
     await page.close();
     await server.close();
