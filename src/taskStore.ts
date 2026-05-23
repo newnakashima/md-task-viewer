@@ -20,7 +20,7 @@ import { slugify } from "./slugify.js";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".markdown"]);
 const REQUIRED_PRIORITY: TaskPriority[] = ["MUST", "WANT"];
-const REQUIRED_STATUS: TaskStatus[] = ["TODO", "WIP", "DONE"];
+const REQUIRED_STATUS: TaskStatus[] = ["TODO", "DONE"];
 
 export class ConflictError extends Error {}
 export class ValidationError extends Error {}

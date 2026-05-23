@@ -60,7 +60,7 @@ describe("server api", () => {
         path: "renamed.md",
         title: "Updated Task",
         priority: "MUST",
-        status: "WIP",
+        status: "DONE",
         content: "New body",
         baseUpdatedAt: current.frontmatter.updatedAt
       }
@@ -71,7 +71,7 @@ describe("server api", () => {
     const renamedFile = await readFile(path.join(rootDir, "renamed.md"), "utf8");
     expect(updated.path).toBe("renamed.md");
     expect(renamedFile).toContain("title: Updated Task");
-    expect(renamedFile).toContain("status: WIP");
+    expect(renamedFile).toContain("status: DONE");
     expect(renamedFile).toContain("New body");
     expect(updated.frontmatter.updatedAt).not.toBe("2024-01-01T00:00:00.000Z");
 

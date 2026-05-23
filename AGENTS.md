@@ -44,7 +44,7 @@ Each `.md`/`.markdown` file is a task with required YAML frontmatter:
 ---
 title: string
 priority: MUST | WANT
-status: TODO | WIP | DONE
+status: TODO | DONE
 createdAt: ISO 8601 UTC
 updatedAt: ISO 8601 UTC
 ---

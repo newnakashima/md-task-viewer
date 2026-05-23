@@ -36,7 +36,7 @@ describe("taskStore", () => {
       frontmatter: {
         title: "Task",
         priority: "MUST",
-        status: "WIP",
+        status: "TODO",
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-02T00:00:00.000Z"
       }

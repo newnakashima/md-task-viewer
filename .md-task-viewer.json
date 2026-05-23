@@ -8,7 +8,6 @@
   ],
   "order": [
     "tasks/テストをCIで回す.md",
-    "tasks/WIPステータスの削除.md",
     "tasks/RELATIVE-PATH-をクリップボードにコピーするボタン.md",
     "tasks/肥大化したファイルを分割するリファクタ.md",
     "tasks/CTRLC-で止めるとターミナルが固まる.md",
