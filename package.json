@@ -35,8 +35,8 @@
     "test:e2e": "playwright test",
     "generate:key": "tsx scripts/generate-encryption-key.ts",
     "build:readonly": "tsx scripts/build-readonly.ts",
-    "deploy": "npm run build:client && wrangler deploy",
-    "preview": "npm run build:client && wrangler dev"
+    "deploy": "npm run build:readonly && wrangler deploy",
+    "preview": "npm run build:readonly && wrangler dev"
   },
   "engines": {
     "node": ">=24.0.0"
