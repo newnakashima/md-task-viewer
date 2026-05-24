@@ -12,6 +12,7 @@ Each Markdown file (`1 file = 1 task`) is managed through a browser UI, and all 
 - Drag-and-drop reordering
 - Persistent ordering via a dedicated metadata file
 - Auto-reload on external file changes
+- Read-only static build for browsing tasks from a phone or any static host (S3, Cloudflare Workers, Netlify, …) with optional AES-256-GCM encryption — see [docs/build-readonly.md](docs/build-readonly.md)
 
 ## Requirements
 
@@ -132,6 +133,30 @@ E2E tests:
 ```bash
 npm run test:e2e
 ```
+
+## Read-only static build
+
+You can build a viewer-only static bundle that ships your tasks as a single
+JSON snapshot — useful for browsing them from a phone or any device that
+can't run the Fastify backend. The output goes in `dist/client/` and can be
+served from any static host (S3, Nginx, Cloudflare Workers, Netlify, …).
+
+```bash
+# Generate a 256-bit AES-GCM key (optional but recommended)
+npm run generate:key
+
+# Build with encryption
+export MD_TASK_VIEWER_READONLY_KEY="<paste the key>"
+npm run build:readonly -- /path/to/your/task/repo
+```
+
+If `MD_TASK_VIEWER_READONLY_KEY` is unset the snapshot is shipped in plain
+text (with a build-time warning). When encrypted, an unlock modal in the
+browser asks for the key and keeps it in `sessionStorage`.
+
+See [docs/build-readonly.md](docs/build-readonly.md) for the encryption
+model, hosting examples, and a Cloudflare Workers (Static Assets) continuous
+deployment walkthrough.
 
 ## Tech Stack
 
