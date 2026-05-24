@@ -365,6 +365,47 @@ button {
   height: 100%;
 }
 
+.task-form--readonly {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.task-form--readonly .readonly-field {
+  display: grid;
+  gap: 4px;
+}
+
+.task-form--readonly .readonly-field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.task-form--readonly .readonly-title h3 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.task-form--readonly .readonly-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-form--readonly .readonly-path code {
+  font-size: 0.8rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border: 1px solid var(--panel-border);
+}
+
 .task-form label {
   display: grid;
   gap: 4px;

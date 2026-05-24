@@ -24,7 +24,8 @@ export function TaskListPanel({
   onHideDoneChange,
   onSelectTask,
   onCopyPath,
-  onDragEnd
+  onDragEnd,
+  viewOnly = false
 }: {
   tasks: TaskRecord[];
   selectedPath: string | null;
@@ -34,6 +35,7 @@ export function TaskListPanel({
   onSelectTask: (path: string) => void;
   onCopyPath: (path: string) => void;
   onDragEnd: (event: DragEndEvent) => void;
+  viewOnly?: boolean;
 }): ReactElement {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -44,6 +46,22 @@ export function TaskListPanel({
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates
     })
+  );
+
+  const list = (
+    <div className="task-list">
+      {tasks.map((task) => (
+        <SortableTaskItem
+          key={task.path}
+          task={task}
+          selected={task.path === selectedPath}
+          onSelect={onSelectTask}
+          onCopyPath={onCopyPath}
+          viewOnly={viewOnly}
+        />
+      ))}
+      {tasks.length === 0 ? <p className="empty-list">{hideDone ? "No active tasks." : "No tasks yet. Create your first markdown task."}</p> : null}
+    </div>
   );
 
   return (
@@ -60,22 +78,15 @@ export function TaskListPanel({
       </div>
 
       <div className="sidebar-scroll">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={tasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
-            <div className="task-list">
-              {tasks.map((task) => (
-                <SortableTaskItem
-                  key={task.path}
-                  task={task}
-                  selected={task.path === selectedPath}
-                  onSelect={onSelectTask}
-                  onCopyPath={onCopyPath}
-                />
-              ))}
-              {tasks.length === 0 ? <p className="empty-list">{hideDone ? "No active tasks." : "No tasks yet. Create your first markdown task."}</p> : null}
-            </div>
-          </SortableContext>
-        </DndContext>
+        {viewOnly ? (
+          list
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={tasks.map((task) => task.path)} strategy={verticalListSortingStrategy}>
+              {list}
+            </SortableContext>
+          </DndContext>
+        )}
 
         {errors.length > 0 ? (
           <div className="error-panel">
