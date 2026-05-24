@@ -1,9 +1,9 @@
 ---
 title: read only モードでビルドできるようにする
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-05-24T05:51:32.931Z'
-updatedAt: '2026-05-24T05:52:51.608Z'
+updatedAt: '2026-05-24T07:19:46.444Z'
 ---
 ## 概要
 
