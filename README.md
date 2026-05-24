@@ -138,21 +138,26 @@ npm run test:e2e
 
 You can build a viewer-only static bundle that ships your tasks as a single
 JSON snapshot — useful for browsing them from a phone or any device that
-can't run the Fastify backend. The output goes in `dist/client/` and can be
-served from any static host (S3, Nginx, Cloudflare Workers, Netlify, …).
+can't run the Fastify backend. The output goes in your chosen `--out`
+directory and can be served from any static host (S3, Nginx, Cloudflare
+Workers, Netlify, …).
 
 ```bash
 # Generate a 256-bit AES-GCM key (optional but recommended)
-npm run generate:key
+md-task-viewer generate-key
 
 # Build with encryption
 export MD_TASK_VIEWER_READONLY_KEY="<paste the key>"
-npm run build:readonly -- /path/to/your/task/repo
+md-task-viewer build-readonly /path/to/your/task/repo --out ./dist-readonly
 ```
 
 If `MD_TASK_VIEWER_READONLY_KEY` is unset the snapshot is shipped in plain
 text (with a build-time warning). When encrypted, an unlock modal in the
 browser asks for the key and keeps it in `sessionStorage`.
+
+> Working in a clone of this repo? The equivalent npm scripts are
+> `npm run generate:key` and `npm run build:readonly -- /path/to/repo`;
+> they write into `dist/client/` instead of an arbitrary `--out` directory.
 
 See [docs/build-readonly.md](docs/build-readonly.md) for the encryption
 model, hosting examples, and a Cloudflare Workers (Static Assets) continuous

@@ -52,8 +52,7 @@ const result = spawnSync("npx", ["vite", "build"], {
   stdio: "inherit",
   env: {
     ...process.env,
-    VITE_READONLY: "true",
-    VITE_READONLY_ENCRYPTED: String(encrypted)
+    VITE_READONLY: "true"
   }
 });
 

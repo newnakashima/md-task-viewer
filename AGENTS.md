@@ -20,6 +20,12 @@ npm run generate:key       # Print a random AES-256-GCM key (read-only mode)
 npm run build:readonly -- <rootDir>  # Build read-only static bundle (dist/client/)
 ```
 
+End users of the published package call the same functionality through the
+CLI: `md-task-viewer generate-key` and
+`md-task-viewer build-readonly <rootDir> [--out <dir>]`. The CLI ships a
+pre-built read-only client at `dist/client-readonly/` (produced by
+`npm run build:client:readonly`) and copies it into `--out`.
+
 To run a single test file: `npx vitest run tests/taskStore.test.ts`
 
 E2E tests expect the app at `http://127.0.0.1:4173` (Vite preview server).
@@ -45,7 +51,7 @@ E2E tests expect the app at `http://127.0.0.1:4173` (Vite preview server).
 
 **Data flow**: CLI starts Fastify → watches task directories with chokidar → serves React app via @fastify/static → client communicates via REST API + EventSource (SSE) for live updates.
 
-In **read-only mode** (`import.meta.env.VITE_READONLY === "true"`), the client skips every `/api/*` call and the SSE connection. It fetches `./data/snapshot.json` instead, decrypting with the key the user types into `UnlockModal` when `VITE_READONLY_ENCRYPTED === "true"`. All write UI (New Task, Settings, Execute tab, drag handles, save/delete buttons) is hidden; `TaskDetailView` replaces `TaskDetailForm`. See `docs/build-readonly.md`.
+In **read-only mode** (`import.meta.env.VITE_READONLY === "true"`), the client skips every `/api/*` call and the SSE connection. It fetches `./data/snapshot.json` instead; whether the snapshot is encrypted is detected at runtime from the snapshot's `encrypted` field, and the user is prompted via `UnlockModal` for the decryption key when needed. All write UI (New Task, Settings, Execute tab, drag handles, save/delete buttons) is hidden; `TaskDetailView` replaces `TaskDetailForm`. See `docs/build-readonly.md`.
 
 ## Task Format
 

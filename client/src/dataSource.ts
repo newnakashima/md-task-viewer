@@ -1,7 +1,7 @@
 import { decryptSnapshot, type EncryptedEnvelope } from "~/readonly/crypto";
 import { requestJson } from "./api";
 import type { TaskListResponse } from "./types";
-import { IS_ENCRYPTED, IS_READONLY } from "./env";
+import { IS_READONLY } from "./env";
 
 interface PlainSnapshotFile {
   version: number;
@@ -39,6 +39,14 @@ export class DecryptError extends Error {
   }
 }
 
+export async function isSnapshotEncrypted(): Promise<boolean> {
+  if (!IS_READONLY) {
+    return false;
+  }
+  const snapshot = await fetchSnapshot();
+  return snapshot.encrypted === true;
+}
+
 export async function loadInitialData(decryptionKey?: string | null): Promise<TaskListResponse> {
   if (!IS_READONLY) {
     return requestJson<TaskListResponse>("/api/tasks");
@@ -64,7 +72,7 @@ export async function loadInitialData(decryptionKey?: string | null): Promise<Ta
 }
 
 export function readStoredKey(): string | null {
-  if (!IS_READONLY || !IS_ENCRYPTED) {
+  if (!IS_READONLY) {
     return null;
   }
   try {

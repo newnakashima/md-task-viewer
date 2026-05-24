@@ -7,7 +7,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 export default defineConfig({
   plugins: [react(), cloudflare()],
   build: {
-    outDir: "dist/client",
+    outDir: process.env.VITE_OUT_DIR ?? "dist/client",
     emptyOutDir: false
   },
   resolve: {

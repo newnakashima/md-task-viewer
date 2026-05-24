@@ -13,10 +13,11 @@ import type {
 } from "./types";
 import { draftFromTask } from "./utils";
 import { requestJson } from "./api";
-import { IS_ENCRYPTED, IS_READONLY } from "./env";
+import { IS_READONLY } from "./env";
 import {
   DecryptError,
   clearStoredKey,
+  isSnapshotEncrypted,
   loadInitialData,
   readStoredKey,
   storeKey
@@ -55,7 +56,8 @@ export function App(): ReactElement {
   const [executing, setExecuting] = useState<boolean>(false);
   const [unlockKey, setUnlockKey] = useState<string | null>(() => readStoredKey());
   const [unlockError, setUnlockError] = useState<string | null>(null);
-  const needsUnlock = IS_READONLY && IS_ENCRYPTED && !unlockKey;
+  const [snapshotEncrypted, setSnapshotEncrypted] = useState<boolean | null>(IS_READONLY ? null : false);
+  const needsUnlock = IS_READONLY && snapshotEncrypted === true && !unlockKey;
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -137,12 +139,26 @@ export function App(): ReactElement {
   }
 
   useEffect(() => {
-    if (needsUnlock) {
+    if (!IS_READONLY || snapshotEncrypted !== null) {
+      return;
+    }
+    void (async () => {
+      try {
+        const encrypted = await isSnapshotEncrypted();
+        setSnapshotEncrypted(encrypted);
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : "Failed to load snapshot.", "error");
+      }
+    })();
+  }, [snapshotEncrypted]);
+
+  useEffect(() => {
+    if (needsUnlock || snapshotEncrypted === null) {
       return;
     }
     void loadConfig();
     void loadTasks({ announce: true });
-  }, [needsUnlock, unlockKey]);
+  }, [needsUnlock, snapshotEncrypted, unlockKey]);
 
   useEffect(() => {
     if (selectedPath && !filteredTasks.some((t) => t.path === selectedPath)) {
