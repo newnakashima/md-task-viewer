@@ -7,6 +7,7 @@
     "**/archived/**"
   ],
   "order": [
+    "tasks/read-only-モードでビルドできるようにする.md",
     "tasks/テストをCIで回す.md",
     "tasks/WIPステータスの削除.md",
     "tasks/RELATIVE-PATH-をクリップボードにコピーするボタン.md",
