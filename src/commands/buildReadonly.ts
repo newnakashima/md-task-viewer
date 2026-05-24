@@ -55,6 +55,7 @@ export async function runBuildReadonly(options: BuildReadonlyOptions): Promise<v
   process.stderr.write(`[md-task-viewer] Collecting snapshot from ${rootDir}\n`);
   const snapshot = await collectSnapshot(rootDir);
 
+  await fs.rm(outputDir, { recursive: true, force: true });
   await fs.mkdir(outputDir, { recursive: true });
   await fs.cp(templateDir, outputDir, { recursive: true });
 
@@ -125,6 +126,11 @@ export function parseBuildReadonlyArgs(argv: string[]): ParsedBuildReadonlyArgs 
       if (!next) {
         throw new Error(`Missing value for ${current}`);
       }
+      process.stderr.write(
+        "[md-task-viewer] WARNING: passing the encryption key via CLI argument exposes it in " +
+          "process listings (ps aux) and shell history. " +
+          "Use the MD_TASK_VIEWER_READONLY_KEY environment variable instead.\n"
+      );
       encryptionKey = next;
       index += 1;
       continue;
@@ -138,6 +144,11 @@ export function parseBuildReadonlyArgs(argv: string[]): ParsedBuildReadonlyArgs 
       continue;
     }
     if (current.startsWith("--key=")) {
+      process.stderr.write(
+        "[md-task-viewer] WARNING: passing the encryption key via CLI argument exposes it in " +
+          "process listings (ps aux) and shell history. " +
+          "Use the MD_TASK_VIEWER_READONLY_KEY environment variable instead.\n"
+      );
       encryptionKey = current.slice("--key=".length);
       continue;
     }
