@@ -2,5 +2,5 @@ name = "md-task-viewer-readonly"
 compatibility_date = "2026-05-23"
 
 [assets]
-directory = "./dist/client"
+directory = "./dist/client-readonly"
 not_found_handling = "single-page-application"

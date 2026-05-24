@@ -10,11 +10,27 @@ const rootDirArg = process.argv[2];
 const rootDir = path.resolve(rootDirArg ?? process.cwd());
 const key = process.env.MD_TASK_VIEWER_READONLY_KEY;
 const encrypted = Boolean(key);
+const variantDir = encrypted ? "client-readonly" : "client-readonly-plain";
+
+process.stderr.write(`[md-task-viewer] Running vite build (readonly=${encrypted ? "encrypted" : "plain"})...\n`);
+const result = spawnSync("npx", ["vite", "build"], {
+  cwd: projectRoot,
+  stdio: "inherit",
+  env: {
+    ...process.env,
+    VITE_READONLY: "true",
+    VITE_READONLY_ENCRYPTED: String(encrypted)
+  }
+});
+
+if (result.status !== 0) {
+  process.exit(result.status ?? 1);
+}
 
 const snapshot = await collectSnapshot(rootDir);
 const snapshotJson = JSON.stringify(snapshot);
 
-const outDir = path.join(projectRoot, "dist", "client", "data");
+const outDir = path.join(projectRoot, "dist", variantDir, "data");
 await fs.mkdir(outDir, { recursive: true });
 const outFile = path.join(outDir, "snapshot.json");
 
@@ -41,22 +57,8 @@ if (key) {
     })
   );
   process.stderr.write(
-    "[md-task-viewer] WARNING: building without encryption key. Snapshot will be publicly readable.\n" +
+    `[md-task-viewer] Wrote plain snapshot to ${path.relative(projectRoot, outFile)}\n` +
+      "[md-task-viewer] WARNING: building without encryption key. Snapshot will be publicly readable.\n" +
       "  Set MD_TASK_VIEWER_READONLY_KEY (see `npm run generate:key`) to encrypt.\n"
   );
-}
-
-process.stderr.write(`[md-task-viewer] Running vite build (readonly=${encrypted ? "encrypted" : "plain"})...\n`);
-const result = spawnSync("npx", ["vite", "build"], {
-  cwd: projectRoot,
-  stdio: "inherit",
-  env: {
-    ...process.env,
-    VITE_READONLY: "true",
-    VITE_READONLY_ENCRYPTED: String(encrypted)
-  }
-});
-
-if (result.status !== 0) {
-  process.exit(result.status ?? 1);
 }
