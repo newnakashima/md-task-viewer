@@ -26,7 +26,7 @@ export function SortableTaskItem({
         tabIndex={0}
         onClick={() => onSelect(task.path)}
         onKeyDown={(event) => {
-          if (event.key === "Enter") {
+          if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             onSelect(task.path);
           }

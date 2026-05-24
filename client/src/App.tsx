@@ -67,7 +67,7 @@ export function App(): ReactElement {
     [selectedPath, filteredTasks]
   );
 
-  async function loadTasks(options?: { preserveDraft?: boolean }): Promise<void> {
+  async function loadTasks(options?: { preserveDraft?: boolean; announce?: boolean }): Promise<void> {
     try {
       const payload = await loadInitialData(unlockKey);
       setTasks(payload.tasks);
@@ -88,6 +88,9 @@ export function App(): ReactElement {
           }
           return null;
         });
+      }
+      if (options?.announce) {
+        setNotice("Tasks loaded.");
       }
     } catch (error) {
       if (error instanceof DecryptError) {
@@ -138,8 +141,7 @@ export function App(): ReactElement {
       return;
     }
     void loadConfig();
-    void loadTasks();
-    setNotice("Tasks loaded.");
+    void loadTasks({ announce: true });
   }, [needsUnlock, unlockKey]);
 
   useEffect(() => {
