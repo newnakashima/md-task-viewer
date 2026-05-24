@@ -34,6 +34,7 @@ test("creates, edits, deletes, reorders, and refreshes tasks", async ({ page }) 
     await page.getByRole("button", { name: /Gamma/ }).click();
     await page.getByLabel("Title").fill("Gamma Updated");
     await page.getByRole("button", { name: "Save Task" }).click();
+    await expect(page.getByText("Task saved.")).toBeVisible();
     const gammaRow = page.getByRole("button", { name: /Gamma Updated/ });
     await expect(gammaRow).toBeVisible();
 
