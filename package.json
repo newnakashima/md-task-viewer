@@ -24,9 +24,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "npm run build:server && npm run build:client",
+    "build": "npm run build:server && npm run build:client && npm run build:client:readonly && npm run build:client:readonly:plain",
     "build:server": "tsup",
     "build:client": "vite build",
+    "build:client:readonly": "VITE_READONLY=true VITE_READONLY_ENCRYPTED=true vite build",
+    "build:client:readonly:plain": "VITE_READONLY=true VITE_READONLY_ENCRYPTED=false vite build",
     "dev:client": "vite",
     "prepack": "npm run build",
     "start": "node dist/cli.js",

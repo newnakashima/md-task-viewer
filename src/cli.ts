@@ -3,6 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import open from "open";
 import { createServer } from "./server.js";
+import { runGenerateKey } from "./commands/generateKey.js";
+import { parseBuildReadonlyArgs, runBuildReadonly } from "./commands/buildReadonly.js";
 
 interface CliOptions {
   rootDir: string;
@@ -41,8 +43,26 @@ function parseArgs(argv: string[]): CliOptions {
   return { rootDir, port, host, shouldOpen };
 }
 
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+function printHelp(): void {
+  process.stdout.write(
+    [
+      "Usage:",
+      "  md-task-viewer [rootDir] [--port <n>] [--host <h>] [--no-open]",
+      "      Start the live viewer/editor.",
+      "",
+      "  md-task-viewer generate-key",
+      "      Print a fresh AES-256-GCM key for encrypting read-only bundles.",
+      "",
+      "  md-task-viewer build-readonly [rootDir] [--out <dir>]",
+      "      Build a static read-only site at <dir> (default ./md-task-viewer-readonly).",
+      "      Set MD_TASK_VIEWER_READONLY_KEY or pass --key <key> to encrypt the snapshot.",
+      ""
+    ].join("\n")
+  );
+}
+
+async function runServer(argv: string[]): Promise<void> {
+  const options = parseArgs(argv);
   const app = await createServer({ rootDir: options.rootDir });
   const address = await app.listen({
     port: options.port,
@@ -83,6 +103,29 @@ async function main(): Promise<void> {
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+}
+
+async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+  const first = argv[0];
+
+  if (first === "--help" || first === "-h" || first === "help") {
+    printHelp();
+    return;
+  }
+
+  if (first === "generate-key" || first === "generate:key") {
+    runGenerateKey();
+    return;
+  }
+
+  if (first === "build-readonly" || first === "build:readonly") {
+    const parsed = parseBuildReadonlyArgs(argv.slice(1));
+    await runBuildReadonly(parsed);
+    return;
+  }
+
+  await runServer(argv);
 }
 
 main().catch((error) => {
