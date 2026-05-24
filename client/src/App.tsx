@@ -9,16 +9,25 @@ import type {
   Notice,
   NoticeTone,
   TaskError,
-  TaskListResponse,
   TaskRecord
 } from "./types";
 import { draftFromTask } from "./utils";
 import { requestJson } from "./api";
+import { IS_ENCRYPTED, IS_READONLY } from "./env";
+import {
+  DecryptError,
+  clearStoredKey,
+  loadInitialData,
+  readStoredKey,
+  storeKey
+} from "./dataSource";
 import "./markedSetup";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { TaskListPanel } from "./components/TaskListPanel";
 import { TaskDetailForm } from "./components/TaskDetailForm";
+import { TaskDetailView } from "./components/TaskDetailView";
 import { ExecuteTab } from "./components/ExecuteTab";
+import { UnlockModal } from "./components/UnlockModal";
 
 export function App(): ReactElement {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
@@ -44,6 +53,9 @@ export function App(): ReactElement {
   const [globalCommands, setGlobalCommands] = useState<CommandStep[]>([]);
   const [executionResult, setExecutionResult] = useState<CommandExecutionResult | null>(null);
   const [executing, setExecuting] = useState<boolean>(false);
+  const [unlockKey, setUnlockKey] = useState<string | null>(() => readStoredKey());
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const needsUnlock = IS_READONLY && IS_ENCRYPTED && !unlockKey;
 
   const filteredTasks = useMemo(
     () => (hideDone ? tasks.filter((task) => task.frontmatter.status !== "DONE") : tasks),
@@ -56,29 +68,42 @@ export function App(): ReactElement {
   );
 
   async function loadTasks(options?: { preserveDraft?: boolean }): Promise<void> {
-    const payload = await requestJson<TaskListResponse>("/api/tasks");
-    setTasks(payload.tasks);
-    setErrors(payload.errors);
-    setSelectedPath((current) => {
-      if (current && payload.tasks.some((task) => task.path === current)) {
-        return current;
-      }
-      return payload.tasks[0]?.path ?? null;
-    });
-    if (!options?.preserveDraft) {
-      setDraft((currentDraft) => {
-        if (currentDraft?.originalPath) {
-          const refreshed = payload.tasks.find((task) => task.path === currentDraft.originalPath);
-          if (refreshed) {
-            return draftFromTask(refreshed);
-          }
+    try {
+      const payload = await loadInitialData(unlockKey);
+      setTasks(payload.tasks);
+      setErrors(payload.errors);
+      setSelectedPath((current) => {
+        if (current && payload.tasks.some((task) => task.path === current)) {
+          return current;
         }
-        return null;
+        return payload.tasks[0]?.path ?? null;
       });
+      if (!options?.preserveDraft) {
+        setDraft((currentDraft) => {
+          if (currentDraft?.originalPath) {
+            const refreshed = payload.tasks.find((task) => task.path === currentDraft.originalPath);
+            if (refreshed) {
+              return draftFromTask(refreshed);
+            }
+          }
+          return null;
+        });
+      }
+    } catch (error) {
+      if (error instanceof DecryptError) {
+        clearStoredKey();
+        setUnlockKey(null);
+        setUnlockError(error.message);
+        return;
+      }
+      throw error;
     }
   }
 
   async function loadConfig(): Promise<void> {
+    if (IS_READONLY) {
+      return;
+    }
     try {
       const config = await requestJson<{ taskDirs: string[]; ignorePaths: string[]; commands?: CommandStep[] }>("/api/config");
       setTaskDirs(config.taskDirs);
@@ -109,10 +134,13 @@ export function App(): ReactElement {
   }
 
   useEffect(() => {
+    if (needsUnlock) {
+      return;
+    }
     void loadConfig();
     void loadTasks();
     setNotice("Tasks loaded.");
-  }, []);
+  }, [needsUnlock, unlockKey]);
 
   useEffect(() => {
     if (selectedPath && !filteredTasks.some((t) => t.path === selectedPath)) {
@@ -137,6 +165,9 @@ export function App(): ReactElement {
   }, [selectedTask]);
 
   useEffect(() => {
+    if (IS_READONLY) {
+      return;
+    }
     const source = new EventSource("/api/events");
     source.onmessage = () => {
       void loadTasks({ preserveDraft: true });
@@ -300,44 +331,60 @@ export function App(): ReactElement {
       draft.title !== selectedTask?.frontmatter.title ||
       draft.content !== selectedTask?.content);
 
+  if (needsUnlock) {
+    return (
+      <UnlockModal
+        busy={false}
+        errorMessage={unlockError}
+        onUnlock={(key) => {
+          setUnlockError(null);
+          storeKey(key);
+          setUnlockKey(key);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-left">
           <h1>Markdown Task Viewer</h1>
-          <p className="eyebrow">v0</p>
+          <p className="eyebrow">{IS_READONLY ? "read-only" : "v0"}</p>
         </div>
-        <div className="app-header-actions">
-          <button
-            type="button"
-            className="ghost-button settings-button"
-            onClick={() => setShowSettings(true)}
-            title="Settings"
-          >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.062 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => {
-              setNotice("");
-              setPathManuallyEdited(false);
-              setDraft({
-                originalPath: null,
-                path: taskDirs[0] ? `${taskDirs[0]}/` : "",
-                title: "",
-                priority: "MUST",
-                status: "TODO",
-                content: "",
-                extraFrontmatter: {}
-              });
-            }}
-          >
-            New Task
-          </button>
-        </div>
+        {!IS_READONLY ? (
+          <div className="app-header-actions">
+            <button
+              type="button"
+              className="ghost-button settings-button"
+              onClick={() => setShowSettings(true)}
+              title="Settings"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.062 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => {
+                setNotice("");
+                setPathManuallyEdited(false);
+                setDraft({
+                  originalPath: null,
+                  path: taskDirs[0] ? `${taskDirs[0]}/` : "",
+                  title: "",
+                  priority: "MUST",
+                  status: "TODO",
+                  content: "",
+                  extraFrontmatter: {}
+                });
+              }}
+            >
+              New Task
+            </button>
+          </div>
+        ) : null}
       </header>
 
       <main className="layout-grid">
@@ -347,6 +394,7 @@ export function App(): ReactElement {
           errors={errors}
           hideDone={hideDone}
           onHideDoneChange={setHideDone}
+          viewOnly={IS_READONLY}
           onSelectTask={(path) => {
             setSelectedPath(path);
             setActiveTab("detail");
@@ -362,11 +410,11 @@ export function App(): ReactElement {
 
         <section className="panel editor-panel">
           <div className="panel-header">
-            <h2>{draft?.originalPath ? "Edit Task" : "Task Details"}</h2>
-            {isDirty ? <span className="dirty-state">Unsaved changes</span> : null}
+            <h2>{IS_READONLY ? "Task Details" : draft?.originalPath ? "Edit Task" : "Task Details"}</h2>
+            {!IS_READONLY && isDirty ? <span className="dirty-state">Unsaved changes</span> : null}
           </div>
 
-          {draft?.originalPath ? (
+          {!IS_READONLY && draft?.originalPath ? (
             <div className="tab-bar">
               <button
                 type="button"
@@ -385,7 +433,18 @@ export function App(): ReactElement {
             </div>
           ) : null}
 
-          {draft && activeTab === "detail" ? (
+          {IS_READONLY ? (
+            selectedTask ? (
+              <TaskDetailView
+                task={selectedTask}
+                onCopyPath={(path) => void copyPathToClipboard(path)}
+              />
+            ) : (
+              <div className="empty-editor">
+                <p>Select a task to view it.</p>
+              </div>
+            )
+          ) : draft && activeTab === "detail" ? (
             <TaskDetailForm
               draft={draft}
               setDraft={setDraft}
@@ -423,7 +482,7 @@ export function App(): ReactElement {
         </section>
       </main>
 
-      {showSettings ? (
+      {!IS_READONLY && showSettings ? (
         <SettingsPanel
           taskDirs={taskDirs}
           ignorePaths={ignorePaths}
