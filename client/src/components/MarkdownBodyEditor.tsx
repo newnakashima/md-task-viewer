@@ -165,6 +165,32 @@ export function MarkdownBodyEditor({
             const ta = event.currentTarget;
             const { selectionStart, selectionEnd, value: taValue } = ta;
 
+            // Browsers don't auto-scroll a textarea when its value is mutated
+            // programmatically (only on real keystrokes), so after list
+            // continuation we manually keep the cursor line visible.
+            function scrollCursorIntoView(): void {
+              const styles = window.getComputedStyle(ta);
+              const lineHeight =
+                parseFloat(styles.lineHeight) || parseFloat(styles.fontSize) * 1.2;
+              const paddingTop = parseFloat(styles.paddingTop) || 0;
+              const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+              // 0-indexed line of the cursor, derived from newlines before it.
+              const lineNumber = ta.value.slice(0, ta.selectionEnd).split("\n").length - 1;
+              const cursorBottom = paddingTop + (lineNumber + 1) * lineHeight;
+              const visibleBottom = ta.scrollTop + ta.clientHeight;
+              if (cursorBottom > visibleBottom - paddingBottom) {
+                // Cursor is below the visible area: scroll down so its line
+                // sits just above the bottom padding.
+                ta.scrollTop = cursorBottom - ta.clientHeight + paddingBottom;
+              } else {
+                const cursorTop = paddingTop + lineNumber * lineHeight;
+                if (cursorTop < ta.scrollTop) {
+                  // Cursor is above the visible area: scroll up to it.
+                  ta.scrollTop = cursorTop;
+                }
+              }
+            }
+
             if (event.key === "Tab") {
               event.preventDefault();
               const lineStart = taValue.lastIndexOf("\n", selectionStart - 1) + 1;
@@ -226,6 +252,7 @@ export function MarkdownBodyEditor({
                   onChange(newValue);
                   requestAnimationFrame(() => {
                     ta.selectionStart = ta.selectionEnd = lineStart;
+                    scrollCursorIntoView();
                   });
                 } else {
                   // Continue the list
@@ -238,6 +265,7 @@ export function MarkdownBodyEditor({
                   onChange(newValue);
                   requestAnimationFrame(() => {
                     ta.selectionStart = ta.selectionEnd = newCursor;
+                    scrollCursorIntoView();
                   });
                 }
               }
