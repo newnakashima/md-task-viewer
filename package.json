@@ -32,7 +32,7 @@
     "dev:client": "vite",
     "prepack": "npm run build",
     "start": "node dist/cli.js",
-    "start:local": "npm run build && node dist/cli.js",
+    "start:local": "npm run build:client && node dist/cli.js",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
     "generate:key": "tsx scripts/generate-encryption-key.ts",
