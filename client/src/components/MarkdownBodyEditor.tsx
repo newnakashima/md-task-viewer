@@ -1,22 +1,53 @@
 import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "../markedSetup";
-import { isMac } from "../utils";
+import { isMac, resolveAssetUrl } from "../utils";
+
+// Rewrite relative <img src> values so the live preview resolves them against
+// the markdown file's directory via the /api/assets route.
+function rewriteImageSources(html: string, mdPath: string): string {
+  if (typeof DOMParser === "undefined") {
+    return html;
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  let changed = false;
+  doc.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src");
+    if (!src) {
+      return;
+    }
+    const resolved = resolveAssetUrl(mdPath, src);
+    if (resolved !== src) {
+      img.setAttribute("src", resolved);
+      changed = true;
+    }
+  });
+  return changed ? doc.body.innerHTML : html;
+}
 
 export function MarkdownBodyEditor({
   value,
   onChange,
   bodyFullHeight,
   onToggleBodyFullHeight,
-  selectedPath
+  selectedPath,
+  mdPath,
+  onUploadImage,
+  onUploadError
 }: {
   value: string;
   onChange: (next: string) => void;
   bodyFullHeight: boolean;
   onToggleBodyFullHeight: () => void;
   selectedPath: string | null;
+  mdPath: string;
+  onUploadImage: (file: File) => Promise<{ markdown: string }>;
+  onUploadError: (message: string) => void;
 }): ReactElement {
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [dragActive, setDragActive] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const cursorPosRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
@@ -27,9 +58,53 @@ export function MarkdownBodyEditor({
   const restorePreviewScrollRef = useRef<boolean>(false);
 
   const previewHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(value || "") as string),
-    [value]
+    () => DOMPurify.sanitize(rewriteImageSources(marked.parse(value || "") as string, mdPath)),
+    [value, mdPath]
   );
+
+  function insertAtCursor(text: string): void {
+    const ta = textareaRef.current;
+    if (!ta) {
+      onChange(value ? `${value}\n${text}` : text);
+      return;
+    }
+    const { selectionStart, selectionEnd } = ta;
+    const next = value.slice(0, selectionStart) + text + value.slice(selectionEnd);
+    onChange(next);
+    const cursor = selectionStart + text.length;
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  async function uploadFiles(files: File[]): Promise<void> {
+    const images = files.filter((f) => f.type.startsWith("image/") && f.type !== "image/svg+xml");
+    if (images.length === 0 || uploading) {
+      return;
+    }
+    setUploading(true);
+    const snippets: string[] = [];
+    const errors: string[] = [];
+    try {
+      for (const file of images) {
+        try {
+          const { markdown } = await onUploadImage(file);
+          snippets.push(markdown);
+        } catch (err) {
+          errors.push(err instanceof Error ? err.message : `Failed to upload ${file.name}.`);
+        }
+      }
+      if (snippets.length > 0) {
+        insertAtCursor(`${snippets.join("\n")}\n`);
+      }
+      if (errors.length > 0) {
+        onUploadError(errors.join("\n"));
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function togglePreview(): void {
     setShowPreview((prev) => {
@@ -126,6 +201,34 @@ export function MarkdownBodyEditor({
           </svg>
           {showPreview ? "Edit" : "Preview"} ({isMac ? "⌘" : "Ctrl+"}E)
         </button>
+        {!showPreview ? (
+          <>
+            <button
+              type="button"
+              className="ghost-button body-fullheight-button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              title="Insert image"
+            >
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+              </svg>
+              {uploading ? "Uploading…" : "Image"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(event) => {
+                const files = event.target.files ? Array.from(event.target.files) : [];
+                event.target.value = "";
+                void uploadFiles(files);
+              }}
+            />
+          </>
+        ) : null}
       </span>
       {showPreview ? (
         <div
@@ -142,6 +245,46 @@ export function MarkdownBodyEditor({
       ) : (
         <textarea
           aria-label="Markdown body"
+          className={dragActive ? "drag-over" : undefined}
+          onPaste={(event) => {
+            const items = event.clipboardData?.items;
+            if (!items) {
+              return;
+            }
+            const files = Array.from(items)
+              .filter((item) => item.kind === "file" && item.type.startsWith("image/") && item.type !== "image/svg+xml")
+              .map((item) => item.getAsFile())
+              .filter((file): file is File => file !== null);
+            if (files.length === 0) {
+              return;
+            }
+            event.preventDefault();
+            void uploadFiles(files);
+          }}
+          onDragEnter={(event) => {
+            if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) {
+              setDragActive(true);
+            }
+          }}
+          onDragOver={(event) => {
+            if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) {
+              event.preventDefault();
+            }
+          }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(event) => {
+            const files = event.dataTransfer?.files;
+            if (!files || files.length === 0) {
+              return;
+            }
+            const images = Array.from(files).filter((file) => file.type.startsWith("image/") && file.type !== "image/svg+xml");
+            setDragActive(false);
+            if (images.length === 0) {
+              return;
+            }
+            event.preventDefault();
+            void uploadFiles(images);
+          }}
           ref={(el) => {
             textareaRef.current = el;
             if (el) {
