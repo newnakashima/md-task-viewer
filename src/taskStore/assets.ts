@@ -107,7 +107,8 @@ function fileNameStem(filename: string): string {
   const base = path.posix.basename((filename ?? "").replace(/\\/g, "/"));
   const stem = base.replace(/\.[^.]*$/, "");
   const slug = slugify(stem).toLowerCase();
-  return slug === "untitled-task" ? "image" : slug;
+  // slugify returns "untitled-task" for empty or non-slugifiable input
+  return slug && slug !== "untitled-task" ? slug : "image";
 }
 
 export async function saveImageAsset(rootDir: string, input: SaveImageInput): Promise<SaveImageResult> {

@@ -195,6 +195,7 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
     }
   });
 
+  // bodyLimit is 15 MB because a 10 MB binary inflates to ~13.4 MB in base64
   app.post(
     "/api/uploads",
     { bodyLimit: 15 * 1024 * 1024 },

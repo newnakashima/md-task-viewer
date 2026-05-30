@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { saveImageAsset } from "../src/taskStore.js";
 import { createServer } from "../src/server.js";
+import { resolveAssetUrl } from "../client/src/utils.js";
 
 // A minimal valid 1x1 transparent PNG.
 const PNG_BASE64 =
@@ -107,6 +108,18 @@ describe("saveImageAsset", () => {
       })
     ).rejects.toThrow();
   });
+
+  it("rejects images that exceed the 10MB limit", async () => {
+    const bigData = Buffer.alloc(11 * 1024 * 1024, 0).toString("base64");
+    await expect(
+      saveImageAsset(rootDir, {
+        taskPath: "tasks/foo.md",
+        filename: "big.png",
+        dataBase64: bigData,
+        contentType: "image/png"
+      })
+    ).rejects.toThrow(/10MB/);
+  });
 });
 
 describe("image upload + asset serving routes", () => {
@@ -166,5 +179,52 @@ describe("image upload + asset serving routes", () => {
     expect(response.statusCode).toBe(404);
 
     await app.close();
+  });
+
+  it("blocks path traversal in GET /api/assets", async () => {
+    const app = await createServer({ rootDir, clientDir: null });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/assets/..%2Fpackage.json"
+    });
+    expect(response.statusCode).toBe(404);
+
+    await app.close();
+  });
+});
+
+describe("resolveAssetUrl", () => {
+  it("rewrites relative src to /api/assets route", () => {
+    expect(resolveAssetUrl("tasks/foo.md", "assets/img.png")).toBe(
+      "/api/assets/tasks/assets/img.png"
+    );
+  });
+
+  it("returns absolute URLs unchanged", () => {
+    expect(resolveAssetUrl("tasks/foo.md", "https://example.com/img.png")).toBe(
+      "https://example.com/img.png"
+    );
+  });
+
+  it("returns root-relative paths unchanged", () => {
+    expect(resolveAssetUrl("tasks/foo.md", "/img.png")).toBe("/img.png");
+  });
+
+  it("returns data URIs unchanged", () => {
+    const dataUri = "data:image/png;base64,abc";
+    expect(resolveAssetUrl("tasks/foo.md", dataUri)).toBe(dataUri);
+  });
+
+  it("handles task at workspace root", () => {
+    expect(resolveAssetUrl("foo.md", "assets/img.png")).toBe(
+      "/api/assets/assets/img.png"
+    );
+  });
+
+  it("percent-encodes path segments", () => {
+    expect(resolveAssetUrl("tasks/my task.md", "assets/my image.png")).toBe(
+      "/api/assets/tasks/assets/my%20image.png"
+    );
   });
 });

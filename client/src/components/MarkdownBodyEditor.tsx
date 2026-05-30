@@ -79,20 +79,28 @@ export function MarkdownBodyEditor({
   }
 
   async function uploadFiles(files: File[]): Promise<void> {
-    const images = files.filter((file) => file.type.startsWith("image/"));
+    const images = files.filter((f) => f.type.startsWith("image/") && f.type !== "image/svg+xml");
     if (images.length === 0 || uploading) {
       return;
     }
     setUploading(true);
+    const snippets: string[] = [];
+    const errors: string[] = [];
     try {
-      const snippets: string[] = [];
       for (const file of images) {
-        const { markdown } = await onUploadImage(file);
-        snippets.push(markdown);
+        try {
+          const { markdown } = await onUploadImage(file);
+          snippets.push(markdown);
+        } catch (err) {
+          errors.push(err instanceof Error ? err.message : `Failed to upload ${file.name}.`);
+        }
       }
-      insertAtCursor(`${snippets.join("\n")}\n`);
-    } catch (error) {
-      onUploadError(error instanceof Error ? error.message : "Failed to upload image.");
+      if (snippets.length > 0) {
+        insertAtCursor(`${snippets.join("\n")}\n`);
+      }
+      if (errors.length > 0) {
+        onUploadError(errors.join("\n"));
+      }
     } finally {
       setUploading(false);
     }
@@ -244,7 +252,7 @@ export function MarkdownBodyEditor({
               return;
             }
             const files = Array.from(items)
-              .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+              .filter((item) => item.kind === "file" && item.type.startsWith("image/") && item.type !== "image/svg+xml")
               .map((item) => item.getAsFile())
               .filter((file): file is File => file !== null);
             if (files.length === 0) {
@@ -269,7 +277,7 @@ export function MarkdownBodyEditor({
             if (!files || files.length === 0) {
               return;
             }
-            const images = Array.from(files).filter((file) => file.type.startsWith("image/"));
+            const images = Array.from(files).filter((file) => file.type.startsWith("image/") && file.type !== "image/svg+xml");
             setDragActive(false);
             if (images.length === 0) {
               return;
