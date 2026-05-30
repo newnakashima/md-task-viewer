@@ -23,6 +23,7 @@
     "tasks/Markdown-preview.md",
     "tasks/version-up-nodejs.md",
     "tasks/keep-order-when-a-file-is-renamed.md",
-    "tasks/keep-scroll-position.md"
+    "tasks/keep-scroll-position.md",
+    "tasks/read-only-モードで画像を表示できるようにする.md"
   ]
 }

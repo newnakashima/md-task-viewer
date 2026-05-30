@@ -26,7 +26,9 @@ export function TaskDetailForm({
   onDelete,
   onCancel,
   onPatchField,
-  onCopyPath
+  onCopyPath,
+  onUploadImage,
+  onUploadError
 }: {
   draft: DraftTask;
   setDraft: (next: DraftTask | null) => void;
@@ -41,6 +43,8 @@ export function TaskDetailForm({
   onCancel: () => void;
   onPatchField: (field: "priority" | "status", value: string) => void;
   onCopyPath: (path: string) => void;
+  onUploadImage: (file: File) => Promise<{ markdown: string }>;
+  onUploadError: (message: string) => void;
 }): ReactElement {
   const [bodyFullHeight, setBodyFullHeight] = useState<boolean>(false);
   const [showCommandOverride, setShowCommandOverride] = useState<boolean>(false);
@@ -146,6 +150,9 @@ export function TaskDetailForm({
         bodyFullHeight={bodyFullHeight}
         onToggleBodyFullHeight={() => setBodyFullHeight(!bodyFullHeight)}
         selectedPath={selectedTask?.path ?? null}
+        mdPath={draft.path}
+        onUploadImage={onUploadImage}
+        onUploadError={onUploadError}
       />
 
       {draft.originalPath ? (

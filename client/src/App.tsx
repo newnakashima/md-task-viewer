@@ -11,7 +11,7 @@ import type {
   TaskError,
   TaskRecord
 } from "./types";
-import { draftFromTask } from "./utils";
+import { draftFromTask, readFileAsBase64 } from "./utils";
 import { requestJson } from "./api";
 import { IS_ENCRYPTED, IS_READONLY } from "./env";
 import {
@@ -293,6 +293,21 @@ export function App(): ReactElement {
     }
   }
 
+  async function uploadImage(file: File): Promise<{ markdown: string; relPath: string; url: string }> {
+    const dataBase64 = await readFileAsBase64(file);
+    const draftPath = draftRef.current?.path?.trim();
+    const taskPath = draftPath || (taskDirs[0] ? `${taskDirs[0]}/` : "");
+    return requestJson<{ markdown: string; relPath: string; url: string }>("/api/uploads", {
+      method: "POST",
+      body: JSON.stringify({
+        taskPath,
+        filename: file.name,
+        contentType: file.type,
+        dataBase64
+      })
+    });
+  }
+
   async function copyPathToClipboard(path: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(path);
@@ -461,6 +476,8 @@ export function App(): ReactElement {
               onCancel={() => setDraft(null)}
               onPatchField={(field, value) => void patchField(field, value)}
               onCopyPath={(path) => void copyPathToClipboard(path)}
+              onUploadImage={uploadImage}
+              onUploadError={(message) => setNotice(message, "error")}
             />
           ) : draft && activeTab === "execute" ? (
             <ExecuteTab

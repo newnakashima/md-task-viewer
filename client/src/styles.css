@@ -445,6 +445,13 @@ button {
   min-height: 120px;
 }
 
+.task-form textarea.drag-over {
+  border-color: var(--accent);
+  border-style: dashed;
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+
 .editor-label {
   flex: 1;
   display: flex !important;

@@ -4,6 +4,8 @@ import { buildDefaults, splitFrontmatter } from "./taskStore/frontmatter.js";
 
 export { ConflictError, ValidationError } from "./taskStore/errors.js";
 export { parseTask, serializeTask } from "./taskStore/frontmatter.js";
+export { ASSET_CONTENT_TYPES, saveImageAsset } from "./taskStore/assets.js";
+export type { SaveImageInput, SaveImageResult } from "./taskStore/assets.js";
 export {
   parseOrderPayload,
   readConfig,

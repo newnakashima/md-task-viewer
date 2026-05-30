@@ -2,8 +2,10 @@ import Fastify, { type FastifyInstance } from "fastify";
 import fastifyStatic from "@fastify/static";
 import chokidar from "chokidar";
 import path from "node:path";
+import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  ASSET_CONTENT_TYPES,
   ConflictError,
   ValidationError,
   createTask,
@@ -14,9 +16,12 @@ import {
   patchTaskFields,
   readConfig,
   saveConfig,
+  saveImageAsset,
   saveOrder,
+  taskStoreUtils,
   updateTask
 } from "./taskStore.js";
+import type { SaveImageInput } from "./taskStore.js";
 import type { CommandStep } from "./types.js";
 import { executeCommandPipeline } from "./commandExecutor.js";
 
@@ -187,6 +192,61 @@ export async function createServer(options: CreateServerOptions): Promise<Fastif
       return reply.send(result);
     } catch (error) {
       sendJsonError(reply, error);
+    }
+  });
+
+  app.post(
+    "/api/uploads",
+    { bodyLimit: 15 * 1024 * 1024 },
+    async (request, reply) => {
+      try {
+        const body = request.body as Partial<SaveImageInput> | null;
+        if (!body || typeof body.taskPath !== "string") {
+          throw new ValidationError("taskPath is required.");
+        }
+        if (typeof body.dataBase64 !== "string") {
+          throw new ValidationError("dataBase64 is required.");
+        }
+        const result = await saveImageAsset(options.rootDir, {
+          taskPath: body.taskPath,
+          filename: typeof body.filename === "string" ? body.filename : "image",
+          dataBase64: body.dataBase64,
+          contentType: typeof body.contentType === "string" ? body.contentType : undefined
+        });
+        return reply.code(201).send(result);
+      } catch (error) {
+        sendJsonError(reply, error);
+      }
+    }
+  );
+
+  app.get("/api/assets/*", async (request, reply) => {
+    const raw = (request.params as { "*": string })["*"] ?? "";
+
+    let relPath: string;
+    try {
+      relPath = taskStoreUtils.normalizeRelativePath(decodeURIComponent(raw));
+    } catch {
+      return reply.code(404).send({ error: "Not found" });
+    }
+
+    const extension = path.extname(relPath).replace(/^\./, "").toLowerCase();
+    const contentType = ASSET_CONTENT_TYPES[extension];
+    if (!contentType) {
+      return reply.code(404).send({ error: "Not found" });
+    }
+
+    const absolutePath = path.resolve(options.rootDir, relPath);
+    const resolvedRoot = path.resolve(options.rootDir);
+    if (absolutePath !== resolvedRoot && !absolutePath.startsWith(resolvedRoot + path.sep)) {
+      return reply.code(404).send({ error: "Not found" });
+    }
+
+    try {
+      const data = await fs.readFile(absolutePath);
+      return reply.type(contentType).send(data);
+    } catch {
+      return reply.code(404).send({ error: "Not found" });
     }
   });
 
