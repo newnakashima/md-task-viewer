@@ -1,9 +1,9 @@
 ---
 title: 画像を貼り付けられるようにする
 priority: MUST
-status: TODO
+status: DONE
 createdAt: '2026-05-30T09:43:58.236Z'
-updatedAt: '2026-05-30T09:43:58.236Z'
+updatedAt: '2026-05-30T11:11:02.567Z'
 ---
 本文中に画像を挿入できるようにする。
 
