@@ -5,6 +5,7 @@ import open from "open";
 import { createServer } from "./server.js";
 import { runGenerateKey } from "./commands/generateKey.js";
 import { parseBuildReadonlyArgs, runBuildReadonly } from "./commands/buildReadonly.js";
+import { runVersion } from "./commands/version.js";
 
 interface CliOptions {
   rootDir: string;
@@ -56,6 +57,9 @@ function printHelp(): void {
       "  md-task-viewer build-readonly [rootDir] [--out <dir>]",
       "      Build a static read-only site at <dir> (default ./md-task-viewer-readonly).",
       "      Set MD_TASK_VIEWER_READONLY_KEY or pass --key <key> to encrypt the snapshot.",
+      "",
+      "  md-task-viewer --version",
+      "      Print the installed version and exit.",
       ""
     ].join("\n")
   );
@@ -111,6 +115,11 @@ async function main(): Promise<void> {
 
   if (first === "--help" || first === "-h" || first === "help") {
     printHelp();
+    return;
+  }
+
+  if (first === "--version" || first === "-v" || first === "version") {
+    await runVersion();
     return;
   }
 
