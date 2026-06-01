@@ -84,6 +84,23 @@ describe("runVersion", () => {
 });
 
 describe("parseBuildReadonlyArgs", () => {
+  // Isolate from any MD_TASK_VIEWER_READONLY_KEY present in the ambient
+  // environment, which parseBuildReadonlyArgs reads as a default.
+  let savedKey: string | undefined;
+
+  beforeEach(() => {
+    savedKey = process.env.MD_TASK_VIEWER_READONLY_KEY;
+    delete process.env.MD_TASK_VIEWER_READONLY_KEY;
+  });
+
+  afterEach(() => {
+    if (savedKey === undefined) {
+      delete process.env.MD_TASK_VIEWER_READONLY_KEY;
+    } else {
+      process.env.MD_TASK_VIEWER_READONLY_KEY = savedKey;
+    }
+  });
+
   it("returns defaults when no args given", () => {
     const result = parseBuildReadonlyArgs([]);
     expect(result.rootDir).toBe(process.cwd());
