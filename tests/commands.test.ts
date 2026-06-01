@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseBuildReadonlyArgs, runBuildReadonly } from "../src/commands/buildReadonly.js";
 import { runGenerateKey } from "../src/commands/generateKey.js";
+import { readVersion, runVersion } from "../src/commands/version.js";
 
 describe("runGenerateKey", () => {
   it("writes a 43-char base64url key to stdout", () => {
@@ -35,7 +36,71 @@ describe("runGenerateKey", () => {
   });
 });
 
+describe("readVersion", () => {
+  it("returns the version from the package.json at the package root", async () => {
+    const pkgRaw = await fs.readFile(path.join(process.cwd(), "package.json"), "utf8");
+    const expected = (JSON.parse(pkgRaw) as { version: string }).version;
+    await expect(readVersion()).resolves.toBe(expected);
+  });
+
+  it("reads version from an explicit package root", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "md-task-viewer-ver-"));
+    try {
+      await fs.writeFile(
+        path.join(tmpDir, "package.json"),
+        JSON.stringify({ version: "9.9.9" }),
+        "utf8"
+      );
+      await expect(readVersion(tmpDir)).resolves.toBe("9.9.9");
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws when version is missing", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "md-task-viewer-ver-"));
+    try {
+      await fs.writeFile(path.join(tmpDir, "package.json"), JSON.stringify({}), "utf8");
+      await expect(readVersion(tmpDir)).rejects.toThrow(/version/);
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("runVersion", () => {
+  it("writes the version followed by a newline to stdout", async () => {
+    const pkgRaw = await fs.readFile(path.join(process.cwd(), "package.json"), "utf8");
+    const expected = (JSON.parse(pkgRaw) as { version: string }).version;
+    const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    try {
+      await runVersion();
+      const written = stdoutSpy.mock.calls.map((c) => c[0] as string).join("");
+      expect(written).toBe(`${expected}\n`);
+    } finally {
+      stdoutSpy.mockRestore();
+    }
+  });
+});
+
 describe("parseBuildReadonlyArgs", () => {
+  // Isolate from any MD_TASK_VIEWER_READONLY_KEY present in the ambient
+  // environment, which parseBuildReadonlyArgs reads as a default.
+  let savedKey: string | undefined;
+
+  beforeEach(() => {
+    savedKey = process.env.MD_TASK_VIEWER_READONLY_KEY;
+    delete process.env.MD_TASK_VIEWER_READONLY_KEY;
+  });
+
+  afterEach(() => {
+    if (savedKey === undefined) {
+      delete process.env.MD_TASK_VIEWER_READONLY_KEY;
+    } else {
+      process.env.MD_TASK_VIEWER_READONLY_KEY = savedKey;
+    }
+  });
+
   it("returns defaults when no args given", () => {
     const result = parseBuildReadonlyArgs([]);
     expect(result.rootDir).toBe(process.cwd());
