@@ -13,7 +13,7 @@ test("creates, edits, deletes, reorders, and refreshes tasks", async ({ page }) 
   );
   await writeFile(
     path.join(rootDir, "beta.md"),
-    "---\ntitle: Beta\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBeta body",
+    "---\ntitle: Beta\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBeta body",
     "utf8"
   );
 

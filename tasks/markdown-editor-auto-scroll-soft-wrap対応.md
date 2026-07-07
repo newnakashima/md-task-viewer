@@ -1,6 +1,6 @@
 ---
 title: markdown-editor-auto-scroll soft wrap対応
-priority: WANT
+priority: SHOULD
 status: TODO
 createdAt: '2026-05-25T13:00:00.000Z'
 updatedAt: '2026-05-25T13:00:00.000Z'

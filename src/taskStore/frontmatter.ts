@@ -10,7 +10,7 @@ import {
 import { ValidationError } from "./errors.js";
 import { toPosixPath } from "./paths.js";
 
-const REQUIRED_PRIORITY: TaskPriority[] = ["MUST", "WANT"];
+const REQUIRED_PRIORITY: TaskPriority[] = ["MUST", "SHOULD"];
 const REQUIRED_STATUS: TaskStatus[] = ["TODO", "DONE"];
 
 export function isValidPriority(value: unknown): value is TaskPriority {
@@ -38,7 +38,7 @@ export function buildDefaults(filePath: string, stats: { birthtime: Date; mtime:
 
   return {
     title,
-    priority: "WANT",
+    priority: "SHOULD",
     status: "TODO",
     createdAt: asUtcISOString(stats.birthtime),
     updatedAt: asUtcISOString(stats.mtime)

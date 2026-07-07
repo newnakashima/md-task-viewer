@@ -1,6 +1,6 @@
 ---
 title: read-only モードで画像を表示できるようにする
-priority: WANT
+priority: SHOULD
 status: TODO
 createdAt: '2026-05-30T10:00:00.000Z'
 updatedAt: '2026-05-30T10:00:00.000Z'
