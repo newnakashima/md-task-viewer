@@ -62,7 +62,7 @@ describe("taskStore", () => {
     );
     await writeFile(
       path.join(rootDir, "beta.md"),
-      "---\ntitle: Beta\npriority: WANT\nstatus: DONE\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nB",
+      "---\ntitle: Beta\npriority: SHOULD\nstatus: DONE\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nB",
       "utf8"
     );
     await saveOrder(rootDir, ["beta.md", "missing.md"]);
@@ -203,7 +203,7 @@ describe("taskStore", () => {
 
     const task = await parseTask(rootDir, "ideas.md");
     expect(task.frontmatter.title).toBe("Ideas");
-    expect(task.frontmatter.priority).toBe("WANT");
+    expect(task.frontmatter.priority).toBe("SHOULD");
     expect(task.frontmatter.status).toBe("TODO");
     expect(task.extraFrontmatter).toEqual({ owner: "alice" });
   });

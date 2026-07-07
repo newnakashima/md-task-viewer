@@ -72,7 +72,7 @@ export function TaskDetailForm({
                 }}
               >
                 <option value="MUST">MUST</option>
-                <option value="WANT">WANT</option>
+                <option value="SHOULD">SHOULD</option>
               </select>
             </label>
 

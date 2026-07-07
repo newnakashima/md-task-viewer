@@ -1,6 +1,6 @@
 export const CONFIG_FILE_NAME = ".md-task-viewer.json";
 
-export type TaskPriority = "MUST" | "WANT";
+export type TaskPriority = "MUST" | "SHOULD";
 export type TaskStatus = "TODO" | "DONE";
 
 export interface TaskFrontmatter {

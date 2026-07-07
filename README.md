@@ -8,7 +8,7 @@ Each Markdown file (`1 file = 1 task`) is managed through a browser UI, and all 
 
 - List Markdown tasks
 - Create, edit, and delete tasks
-- Frontmatter-based `MUST` / `WANT` priority and `TODO` / `DONE` status
+- Frontmatter-based `MUST` / `SHOULD` priority and `TODO` / `DONE` status
 - Drag-and-drop reordering
 - Persistent ordering via a dedicated metadata file
 - Auto-reload on external file changes
@@ -60,7 +60,7 @@ Free-form body text.
 ### Required frontmatter
 
 - `title`
-- `priority`: `MUST` or `WANT`
+- `priority`: `MUST` or `SHOULD`
 - `status`: `TODO` or `DONE`
 - `createdAt`: UTC ISO 8601
 - `updatedAt`: UTC ISO 8601

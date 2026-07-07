@@ -46,7 +46,7 @@ describe("server api", () => {
   it("updates body, frontmatter, timestamp, and rename", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),
-      "---\ntitle: Task\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nOld",
+      "---\ntitle: Task\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nOld",
       "utf8"
     );
     const app = await createServer({ rootDir, clientDir: null });
@@ -81,7 +81,7 @@ describe("server api", () => {
   it("deletes tasks and removes them from order", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),
-      "---\ntitle: Task\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBody",
+      "---\ntitle: Task\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBody",
       "utf8"
     );
     const app = await createServer({ rootDir, clientDir: null });
@@ -106,7 +106,7 @@ describe("server api", () => {
   it("executes commands against a task", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),
-      "---\ntitle: Hello World\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nTask body",
+      "---\ntitle: Hello World\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nTask body",
       "utf8"
     );
     // Write global commands config
@@ -140,7 +140,7 @@ describe("server api", () => {
   it("executes commands with passBody stdin via API", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),
-      "---\ntitle: Test\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nHello from stdin",
+      "---\ntitle: Test\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nHello from stdin",
       "utf8"
     );
     const app = await createServer({ rootDir, clientDir: null });
@@ -165,7 +165,7 @@ describe("server api", () => {
   it("returns 400 when no commands are configured", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),
-      "---\ntitle: Task\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBody",
+      "---\ntitle: Task\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBody",
       "utf8"
     );
     const app = await createServer({ rootDir, clientDir: null });
@@ -226,7 +226,7 @@ describe("server api", () => {
   it("returns 409 when the task was externally removed before save", async () => {
     await writeFile(
       path.join(rootDir, "task.md"),
-      "---\ntitle: Task\npriority: WANT\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBody",
+      "---\ntitle: Task\npriority: SHOULD\nstatus: TODO\ncreatedAt: 2024-01-01T00:00:00.000Z\nupdatedAt: 2024-01-01T00:00:00.000Z\n---\nBody",
       "utf8"
     );
     const app = await createServer({ rootDir, clientDir: null });

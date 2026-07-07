@@ -1,4 +1,4 @@
-export type Priority = "MUST" | "WANT";
+export type Priority = "MUST" | "SHOULD";
 export type Status = "TODO" | "DONE";
 
 export interface CommandStep {
